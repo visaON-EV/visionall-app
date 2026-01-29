@@ -1,0 +1,56 @@
+# Dependências
+node_modules
+.pnp
+.pnp.js
+
+# Build
+dist
+dist-ssr
+*.local
+
+# Variáveis de ambiente e chaves (Firebase e outros)
+.env
+.env.local
+.env.*.local
+.env.development.local
+.env.test.local
+.env.production.local
+# Arquivos de configuração sensíveis do Firebase
+firebase-config.json
+*serviceAccount*.json
+*firebase*key*.json
+*-credentials*.json
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Cache e ferramentas
+.cache
+.parcel-cache
+.vite
+*.tsbuildinfo
+coverage
+.nyc_output
+
+# Sistema e editores
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Optional (descomente se usar)
+# .env.development
+# .env.production

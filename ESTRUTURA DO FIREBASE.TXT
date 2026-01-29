@@ -1,0 +1,19 @@
+ordens_servico (collection)
+ └── osId (document)
+     ├── numero
+     ├── cliente
+     ├── status
+     ├── atividadePrincipal
+     ├── createdAt
+     ├── updatedAt
+     └── colaboradorAtual
+
+historico_status (collection)
+ └── historicoId (document)
+     ├── osId
+     ├── statusAnterior
+     ├── statusNovo
+     ├── colaboradorId
+     ├── colaboradorNome
+     ├── dataHora
+     └── tempoNoStatus
