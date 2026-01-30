@@ -68,24 +68,35 @@ export default function OSDetalhes({ os, aberto, onFechar }: OSDetalhesProps) {
     for (let i = 0; i <= etapaIndex; i++) {
       const status = fluxoStatus[i];
       const h = historicoAtualizado.find(hist => hist.statusNovo === status);
+      const isAtual = os.status === status;
+      const isPassado = fluxoStatus.indexOf(os.status) > i;
       
       if (h) {
-        // Se tem tempo salvo, usa ele
-        if (h.tempoNoStatus) {
+        const inicio = new Date(h.dataHora);
+        const fim = new Date();
+        
+        if (isAtual && os.status !== 'concluido') {
+          // Status atual em andamento: sempre calcular em tempo real
+          tempoParcial += calcularTempoUtil(inicio, fim);
+        } else if (h.tempoNoStatus) {
+          // Status passado com tempo salvo: usar tempo salvo
           tempoParcial += h.tempoNoStatus;
-        } else if (i === etapaIndex && os.status === status && os.status !== 'concluido') {
-          // Se é o status atual e ainda não foi concluído, calcular tempo desde o início do status
-          const inicio = new Date(h.dataHora);
-          const fim = new Date();
+        } else if (isPassado) {
+          // Status passado mas sem tempo salvo: calcular do início até agora
           tempoParcial += calcularTempoUtil(inicio, fim);
         }
+      } else if (isAtual && os.status !== 'concluido') {
+        // Não tem histórico mas está no status atual: calcular desde criação da OS
+        const inicio = new Date(os.createdAt);
+        const fim = new Date();
+        tempoParcial += calcularTempoUtil(inicio, fim);
       }
     }
     
     return tempoParcial;
   };
 
-  const handleRegistrarColaborador = (statusIndex: number) => {
+  const handleRegistrarColaborador = async (statusIndex: number) => {
     if (!colaboradorInput.trim()) {
       toast({
         title: 'Erro',
@@ -96,20 +107,29 @@ export default function OSDetalhes({ os, aberto, onFechar }: OSDetalhesProps) {
     }
 
     const status = fluxoStatus[statusIndex];
-    registrarColaboradorNoStatus(
-      os.id,
-      status,
-      usuario?.colaboradorId || '',
-      colaboradorInput.trim()
-    );
+    try {
+      await registrarColaboradorNoStatus(
+        os.id,
+        status,
+        usuario?.colaboradorId || '',
+        colaboradorInput.trim()
+      );
 
-    toast({
-      title: 'Colaborador registrado',
-      description: `${colaboradorInput} registrado em ${STATUS_LABELS[status]}`
-    });
+      toast({
+        title: 'Colaborador registrado',
+        description: `${colaboradorInput} registrado em ${STATUS_LABELS[status]}. Tempo calculado.`
+      });
 
-    setColaboradorInput('');
-    setStatusParaAtualizar(null);
+      setColaboradorInput('');
+      setStatusParaAtualizar(null);
+    } catch (error) {
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível registrar o colaborador',
+        variant: 'destructive'
+      });
+      console.error(error);
+    }
   };
 
   return (
@@ -302,10 +322,26 @@ export default function OSDetalhes({ os, aberto, onFechar }: OSDetalhesProps) {
                 const tempoParcialAteAqui = calcularTempoParcialAteEtapa(index);
                 
                 // Calcular tempo do setor (salvo ou em tempo real se está em andamento)
-                let tempoSetor = historicoDoStatus?.tempoNoStatus;
-                if (isAtual && !isConcluido && historicoDoStatus) {
-                  // Se está em andamento, calcular tempo desde o início do status
+                let tempoSetor: number | undefined = undefined;
+                
+                if (historicoDoStatus) {
+                  // Se tem histórico, calcular tempo desde o início do status
                   const inicio = new Date(historicoDoStatus.dataHora);
+                  const fim = new Date();
+                  
+                  if (isAtual && !isConcluido) {
+                    // Status atual em andamento: sempre calcular em tempo real
+                    tempoSetor = calcularTempoUtil(inicio, fim);
+                  } else if (historicoDoStatus.tempoNoStatus) {
+                    // Status passado: usar tempo salvo
+                    tempoSetor = historicoDoStatus.tempoNoStatus;
+                  } else if (isPassado) {
+                    // Status passado mas sem tempo salvo: calcular do início até agora (ou até mudança de status)
+                    tempoSetor = calcularTempoUtil(inicio, fim);
+                  }
+                } else if (isAtual && !isConcluido) {
+                  // Não tem histórico mas está no status atual: calcular desde criação da OS
+                  const inicio = new Date(os.createdAt);
                   const fim = new Date();
                   tempoSetor = calcularTempoUtil(inicio, fim);
                 }
@@ -337,7 +373,7 @@ export default function OSDetalhes({ os, aberto, onFechar }: OSDetalhesProps) {
                         <Badge className={`${STATUS_COLORS[status]} text-white`}>
                           {STATUS_LABELS[status]}
                         </Badge>
-                        {tempoSetor && tempoSetor > 0 && (
+                        {tempoSetor !== undefined && tempoSetor >= 0 && (
                           <span className="text-xs text-cyan-400 bg-cyan-500/20 px-2 py-0.5 rounded">
                             Setor: {formatarTempoUtil(tempoSetor)}
                           </span>
