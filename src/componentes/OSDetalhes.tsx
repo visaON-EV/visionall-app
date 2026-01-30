@@ -62,6 +62,7 @@ export default function OSDetalhes({ os, aberto, onFechar }: OSDetalhesProps) {
     .sort((a, b) => new Date(a.dataHora).getTime() - new Date(b.dataHora).getTime());
 
   // Calcular tempo parcial acumulado até cada etapa
+  // REGRA: Apenas exibe. Nunca salva. Usa tempos salvos para status passados, calcula em tempo real apenas para status atual.
   const calcularTempoParcialAteEtapa = (etapaIndex: number): number => {
     let tempoParcial = 0;
     
@@ -69,24 +70,20 @@ export default function OSDetalhes({ os, aberto, onFechar }: OSDetalhesProps) {
       const status = fluxoStatus[i];
       const h = historicoAtualizado.find(hist => hist.statusNovo === status);
       const isAtual = os.status === status;
-      const isPassado = fluxoStatus.indexOf(os.status) > i;
       
       if (h) {
-        const inicio = new Date(h.dataHora);
-        const fim = new Date();
-        
         if (isAtual && os.status !== 'concluido') {
-          // Status atual em andamento: sempre calcular em tempo real
+          // Status atual em andamento: calcular em tempo real (visual apenas)
+          const inicio = new Date(h.dataHora);
+          const fim = new Date();
           tempoParcial += calcularTempoUtil(inicio, fim);
-        } else if (h.tempoNoStatus) {
-          // Status passado com tempo salvo: usar tempo salvo
+        } else if (h.tempoNoStatus !== null && h.tempoNoStatus !== undefined) {
+          // Status passado: usar tempo salvo (nunca recalcular)
           tempoParcial += h.tempoNoStatus;
-        } else if (isPassado) {
-          // Status passado mas sem tempo salvo: calcular do início até agora
-          tempoParcial += calcularTempoUtil(inicio, fim);
         }
+        // Se status passado mas tempoNoStatus é null, não soma (não foi salvo ainda)
       } else if (isAtual && os.status !== 'concluido') {
-        // Não tem histórico mas está no status atual: calcular desde criação da OS
+        // Não tem histórico mas está no status atual: calcular desde criação da OS (visual apenas)
         const inicio = new Date(os.createdAt);
         const fim = new Date();
         tempoParcial += calcularTempoUtil(inicio, fim);
@@ -321,26 +318,23 @@ export default function OSDetalhes({ os, aberto, onFechar }: OSDetalhesProps) {
                 const isConcluido = status === 'concluido';
                 const tempoParcialAteAqui = calcularTempoParcialAteEtapa(index);
                 
-                // Calcular tempo do setor (salvo ou em tempo real se está em andamento)
+                // Calcular tempo do setor (apenas exibição, nunca salva)
+                // REGRA: Se tempoNoStatus existe → exibir tempo salvo. Se for status atual e tempoNoStatus for null → calcular em tempo real.
                 let tempoSetor: number | undefined = undefined;
                 
                 if (historicoDoStatus) {
-                  // Se tem histórico, calcular tempo desde o início do status
-                  const inicio = new Date(historicoDoStatus.dataHora);
-                  const fim = new Date();
-                  
-                  if (isAtual && !isConcluido) {
-                    // Status atual em andamento: sempre calcular em tempo real
-                    tempoSetor = calcularTempoUtil(inicio, fim);
-                  } else if (historicoDoStatus.tempoNoStatus) {
-                    // Status passado: usar tempo salvo
+                  if (historicoDoStatus.tempoNoStatus !== null && historicoDoStatus.tempoNoStatus !== undefined) {
+                    // Tem tempo salvo: usar tempo salvo (nunca recalcular)
                     tempoSetor = historicoDoStatus.tempoNoStatus;
-                  } else if (isPassado) {
-                    // Status passado mas sem tempo salvo: calcular do início até agora (ou até mudança de status)
+                  } else if (isAtual && !isConcluido) {
+                    // Status atual sem tempo salvo: calcular em tempo real (visual apenas)
+                    const inicio = new Date(historicoDoStatus.dataHora);
+                    const fim = new Date();
                     tempoSetor = calcularTempoUtil(inicio, fim);
                   }
+                  // Se status passado mas tempoNoStatus é null, não exibe (não foi salvo ainda)
                 } else if (isAtual && !isConcluido) {
-                  // Não tem histórico mas está no status atual: calcular desde criação da OS
+                  // Não tem histórico mas está no status atual: calcular desde criação da OS (visual apenas)
                   const inicio = new Date(os.createdAt);
                   const fim = new Date();
                   tempoSetor = calcularTempoUtil(inicio, fim);

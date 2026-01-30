@@ -2,125 +2,116 @@ import { TODOS_FERIADOS } from '@/tipos';
 import { getConfiguracaoExpediente } from '@/ganchos/useConfiguracaoExpediente';
 
 /**
- * Calcula o tempo útil (em minutos) entre duas datas,
- * considerando apenas horários de expediente, excluindo finais de semana e feriados.
- * 
- * @param inicio - Data/hora de início
- * @param fim - Data/hora de fim
- * @returns Tempo útil em minutos
+ * Calcula o tempo útil de trabalho em minutos entre duas datas
+ * Considerando:
+ * - Segunda a sexta apenas
+ * - Horários configuráveis de expediente
+ * - Exclui sábados, domingos e feriados
  */
-export function calcularTempoUtil(inicio: Date, fim: Date): number {
-  if (fim <= inicio) {
-    return 0;
-  }
 
+function getHorariosExpediente() {
   const config = getConfiguracaoExpediente();
   
-  // Converter horários para minutos do dia
-  const toMinutos = (hora: string): number => {
+  const toMinutos = (hora: string) => {
     const [h, m] = hora.split(':').map(Number);
     return h * 60 + m;
   };
 
-  const inicioManha = toMinutos(config.inicioManha);
-  const fimManha = toMinutos(config.fimManha);
-  const inicioTarde = toMinutos(config.inicioTarde);
-  const fimTarde = toMinutos(config.fimTarde);
+  const INICIO_MANHA = toMinutos(config.inicioManha);
+  const FIM_MANHA = toMinutos(config.fimManha);
+  const INICIO_TARDE = toMinutos(config.inicioTarde);
+  const FIM_TARDE = toMinutos(config.fimTarde);
+  const MINUTOS_POR_DIA = (FIM_MANHA - INICIO_MANHA) + (FIM_TARDE - INICIO_TARDE);
 
-  // Minutos úteis por dia
-  const minutosUteisPorDia = (fimManha - inicioManha) + (fimTarde - inicioTarde);
+  return { INICIO_MANHA, FIM_MANHA, INICIO_TARDE, FIM_TARDE, MINUTOS_POR_DIA };
+}
 
-  // Verificar se uma data é feriado
-  const isFeriado = (data: Date): boolean => {
-    const dataStr = data.toISOString().split('T')[0];
-    return TODOS_FERIADOS.includes(dataStr);
-  };
+function formatarDataParaString(data: Date): string {
+  const ano = data.getFullYear();
+  const mes = String(data.getMonth() + 1).padStart(2, '0');
+  const dia = String(data.getDate()).padStart(2, '0');
+  return `${ano}-${mes}-${dia}`;
+}
 
-  // Verificar se é dia útil (não é sábado, domingo ou feriado)
-  const isDiaUtil = (data: Date): boolean => {
-    const diaSemana = data.getDay();
-    return diaSemana !== 0 && diaSemana !== 6 && !isFeriado(data);
-  };
+function ehFeriado(data: Date): boolean {
+  const dataString = formatarDataParaString(data);
+  return TODOS_FERIADOS.includes(dataString);
+}
 
-  // Obter minutos do dia de uma data
-  const getMinutosDoDia = (data: Date): number => {
-    return data.getHours() * 60 + data.getMinutes();
-  };
+function ehDiaUtil(data: Date): boolean {
+  const diaSemana = data.getDay();
+  // 0 = Domingo, 6 = Sábado
+  if (diaSemana === 0 || diaSemana === 6) return false;
+  if (ehFeriado(data)) return false;
+  return true;
+}
 
-  // Calcular minutos úteis em um dia específico
-  const calcularMinutosNoDia = (data: Date, inicioMinutos: number, fimMinutos: number): number => {
-    const minutosDoDia = getMinutosDoDia(data);
-    
-    // Se está fora do horário de expediente, retornar 0
-    if (minutosDoDia < inicioManha || (minutosDoDia >= fimManha && minutosDoDia < inicioTarde) || minutosDoDia >= fimTarde) {
-      return 0;
-    }
+function minutosDodia(data: Date): number {
+  return data.getHours() * 60 + data.getMinutes();
+}
 
-    let minutosUteis = 0;
+function minutosUteisnoDia(minutoInicio: number, minutoFim: number): number {
+  const { INICIO_MANHA, FIM_MANHA, INICIO_TARDE, FIM_TARDE } = getHorariosExpediente();
+  let minutos = 0;
+  
+  // Período da manhã
+  const inicioManha = Math.max(minutoInicio, INICIO_MANHA);
+  const fimManha = Math.min(minutoFim, FIM_MANHA);
+  if (fimManha > inicioManha) {
+    minutos += fimManha - inicioManha;
+  }
+  
+  // Período da tarde
+  const inicioTarde = Math.max(minutoInicio, INICIO_TARDE);
+  const fimTarde = Math.min(minutoFim, FIM_TARDE);
+  if (fimTarde > inicioTarde) {
+    minutos += fimTarde - inicioTarde;
+  }
+  
+  return minutos;
+}
 
-    // Período da manhã
-    if (inicioMinutos < fimManha && fimMinutos > inicioManha) {
-      const inicioPeriodo = Math.max(inicioMinutos, inicioManha);
-      const fimPeriodo = Math.min(fimMinutos, fimManha);
-      if (fimPeriodo > inicioPeriodo) {
-        minutosUteis += fimPeriodo - inicioPeriodo;
-      }
-    }
-
-    // Período da tarde
-    if (inicioMinutos < fimTarde && fimMinutos > inicioTarde) {
-      const inicioPeriodo = Math.max(inicioMinutos, inicioTarde);
-      const fimPeriodo = Math.min(fimMinutos, fimTarde);
-      if (fimPeriodo > inicioPeriodo) {
-        minutosUteis += fimPeriodo - inicioPeriodo;
-      }
-    }
-
-    return minutosUteis;
-  };
-
-  // Normalizar datas para início do dia
-  const inicioNormalizado = new Date(inicio);
-  inicioNormalizado.setHours(0, 0, 0, 0);
-  const fimNormalizado = new Date(fim);
-  fimNormalizado.setHours(0, 0, 0, 0);
-
+export function calcularTempoUtil(dataInicio: Date | string, dataFim: Date | string): number {
+  const { INICIO_MANHA, FIM_TARDE, MINUTOS_POR_DIA } = getHorariosExpediente();
+  
+  const inicio = typeof dataInicio === 'string' ? new Date(dataInicio) : dataInicio;
+  const fim = typeof dataFim === 'string' ? new Date(dataFim) : dataFim;
+  
+  if (fim <= inicio) return 0;
+  
   let totalMinutos = 0;
-  const dataAtual = new Date(inicioNormalizado);
-
-  // Se início e fim são no mesmo dia
-  if (inicioNormalizado.getTime() === fimNormalizado.getTime()) {
-    if (isDiaUtil(dataAtual)) {
-      const inicioMinutos = getMinutosDoDia(inicio);
-      const fimMinutos = getMinutosDoDia(fim);
-      return calcularMinutosNoDia(dataAtual, inicioMinutos, fimMinutos);
-    }
-    return 0;
+  const dataAtual = new Date(inicio);
+  
+  // Se mesmo dia
+  if (formatarDataParaString(inicio) === formatarDataParaString(fim)) {
+    if (!ehDiaUtil(inicio)) return 0;
+    return minutosUteisnoDia(minutosDodia(inicio), minutosDodia(fim));
   }
-
+  
   // Primeiro dia (parcial)
-  if (isDiaUtil(dataAtual)) {
-    const inicioMinutos = getMinutosDoDia(inicio);
-    totalMinutos += calcularMinutosNoDia(dataAtual, inicioMinutos, fimTarde);
+  if (ehDiaUtil(inicio)) {
+    totalMinutos += minutosUteisnoDia(minutosDodia(inicio), FIM_TARDE);
   }
-
+  
   // Avançar para o próximo dia
   dataAtual.setDate(dataAtual.getDate() + 1);
-
-  // Dias completos
-  while (dataAtual < fimNormalizado) {
-    if (isDiaUtil(dataAtual)) {
-      totalMinutos += minutosUteisPorDia;
+  dataAtual.setHours(0, 0, 0, 0);
+  
+  // Dias completos no meio
+  while (formatarDataParaString(dataAtual) < formatarDataParaString(fim)) {
+    if (ehDiaUtil(dataAtual)) {
+      totalMinutos += MINUTOS_POR_DIA;
     }
     dataAtual.setDate(dataAtual.getDate() + 1);
   }
-
+  
   // Último dia (parcial)
-  if (dataAtual.getTime() === fimNormalizado.getTime() && isDiaUtil(dataAtual)) {
-    const fimMinutos = getMinutosDoDia(fim);
-    totalMinutos += calcularMinutosNoDia(dataAtual, inicioManha, fimMinutos);
+  if (formatarDataParaString(dataAtual) === formatarDataParaString(fim)) {
+    if (ehDiaUtil(fim)) {
+      totalMinutos += minutosUteisnoDia(INICIO_MANHA, minutosDodia(fim));
+    }
   }
-
+  
   return totalMinutos;
 }
 
@@ -135,16 +126,10 @@ export function formatarTempoUtil(minutos: number): string {
     return '0min';
   }
 
+  if (minutos < 60) return `${minutos} min`;
+  
   const horas = Math.floor(minutos / 60);
-  const minutosRestantes = minutos % 60;
-
-  if (horas === 0) {
-    return `${minutosRestantes}min`;
-  }
-
-  if (minutosRestantes === 0) {
-    return `${horas}h`;
-  }
-
-  return `${horas}h ${minutosRestantes}min`;
+  const mins = minutos % 60;
+  
+  return mins > 0 ? `${horas}h ${mins}min` : `${horas}h`;
 }

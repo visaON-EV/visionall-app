@@ -227,14 +227,16 @@ export function useOrdensServico() {
     });
     
     // Registrar no histórico (Firestore): 1 doc por OS+status
+    // REGRA: Criar com tempoNoStatus = null (será salvo apenas ao mudar de status)
     const historicoId = `${novaOS.id}_${statusInicial}`;
+    const dataHoraCriacao = Timestamp.fromDate(new Date(novaOS.createdAt));
     await setDoc(doc(db, 'historico_status', historicoId), {
       osId: novaOS.id,
       statusAnterior: null,
       statusNovo: statusInicial,
       colaboradorId: dados.colaboradorAtual || '',
       colaboradorNome: 'Sistema',
-      dataHora: serverTimestamp(),
+      dataHora: dataHoraCriacao,
       tempoNoStatus: null
     }, { merge: true });
     
@@ -242,6 +244,7 @@ export function useOrdensServico() {
   }, []);
 
   // Atualizar status da OS
+  // REGRA: ÚNICO lugar autorizado a salvar tempo. Salva tempo do status anterior ao mudar de status.
   const atualizarStatus = useCallback(async (
     osId: string, 
     novoStatus: OSStatus, 
@@ -254,24 +257,24 @@ export function useOrdensServico() {
     const os = ordens[osIndex];
     const statusAnterior = os.status;
     
-    // Buscar o último registro do status anterior para atualizar o tempo
+    // 1. Buscar o registro do status anterior (o primeiro, quando entrou no status)
     const registroStatusAnterior = historico
       .filter(h => h.osId === osId && h.statusNovo === statusAnterior)
-      .sort((a, b) => new Date(b.dataHora).getTime() - new Date(a.dataHora).getTime())[0];
+      .sort((a, b) => new Date(a.dataHora).getTime() - new Date(b.dataHora).getTime())[0];
     
-    // Calcular tempo útil no status anterior e atualizar o registro existente
+    // 2. Calcular e salvar o tempo do status anterior (ÚNICO lugar que salva tempo)
     if (registroStatusAnterior) {
       const inicio = new Date(registroStatusAnterior.dataHora);
       const fim = new Date();
       const tempoNoStatus = calcularTempoUtil(inicio, fim);
 
-      // Atualiza somente o tempo no Firestore (preservando colaborador)
+      // Atualiza o tempo no Firestore (preservando colaborador e dataHora)
       await updateDoc(doc(db, 'historico_status', registroStatusAnterior.id), {
         tempoNoStatus
       });
     }
     
-    // Atualizar OS
+    // 3. Atualizar OS com novo status
     const osAtualizada: OrdemServico = {
       ...os,
       status: novoStatus,
@@ -279,7 +282,6 @@ export function useOrdensServico() {
       updatedAt: new Date().toISOString()
     };
     
-    // Persistir alteração no Firestore (a tela será atualizada via onSnapshot)
     const ref = doc(db, 'ordens_servico', osId);
     await updateDoc(ref, {
       status: osAtualizada.status,
@@ -287,7 +289,7 @@ export function useOrdensServico() {
       updatedAt: serverTimestamp()
     });
     
-    // Criar/atualizar registro do novo status no Firestore
+    // 4. Criar registro do novo status (com tempoNoStatus = null)
     const historicoId = `${osId}_${novoStatus}`;
     await setDoc(doc(db, 'historico_status', historicoId), {
       osId,
@@ -295,71 +297,48 @@ export function useOrdensServico() {
       statusNovo: novoStatus,
       colaboradorId,
       colaboradorNome,
-      dataHora: serverTimestamp()
+      dataHora: serverTimestamp(),
+      tempoNoStatus: null
     }, { merge: true });
     
     return osAtualizada;
   }, [ordens, historico]);
 
   // Registrar colaborador no status atual (sem mudar de status)
+  // REGRA: Apenas registra colaborador. NÃO calcula tempo. NÃO atualiza dataHora. NÃO salva tempoNoStatus.
   const registrarColaboradorNoStatus = useCallback(async (
     osId: string, 
     status: OSStatus,
     colaboradorId: string, 
     colaboradorNome: string
   ) => {
-    // Buscar TODOS os registros do status atual (pode haver múltiplos se foi atualizado)
-    const registrosStatus = historico
+    // Buscar registro existente do status (para manter dataHora original)
+    const registroExistente = historico
       .filter(h => h.osId === osId && h.statusNovo === status)
-      .sort((a, b) => new Date(a.dataHora).getTime() - new Date(b.dataHora).getTime());
+      .sort((a, b) => new Date(a.dataHora).getTime() - new Date(b.dataHora).getTime())[0];
     
-    // Pegar o primeiro registro (quando entrou neste status)
-    const registroInicial = registrosStatus[0];
-    
-    let dataHoraInicio: Date | string = serverTimestamp();
-    let tempoNoStatus: number | null = null;
-    
-    if (registroInicial) {
-      // Usar a data do primeiro registro como início
-      dataHoraInicio = registroInicial.dataHora;
-      const inicio = new Date(registroInicial.dataHora);
-      const fim = new Date();
-      tempoNoStatus = calcularTempoUtil(inicio, fim);
-    } else {
-      // Se não existe registro, buscar quando a OS foi criada ou quando mudou para este status
-      const os = ordens.find(o => o.id === osId);
-      if (os) {
-        // Se o status atual da OS é o mesmo, usar a data de criação ou updatedAt
-        if (os.status === status) {
-          dataHoraInicio = os.createdAt || new Date().toISOString();
-          const inicio = new Date(dataHoraInicio);
-          const fim = new Date();
-          tempoNoStatus = calcularTempoUtil(inicio, fim);
-        }
-      }
-    }
-    
-    // Persiste por OS+status, para o nome permanecer na timeline
     const historicoId = `${osId}_${status}`;
     const dadosAtualizacao: any = {
       osId,
       statusNovo: status,
       colaboradorId,
-      colaboradorNome,
+      colaboradorNome
     };
     
-    // Se já existe registro, manter a data original, senão usar serverTimestamp
-    if (registroInicial) {
-      dadosAtualizacao.dataHora = registroInicial.dataHora;
+    // Se já existe registro, manter dataHora original e tempoNoStatus existente
+    if (registroExistente) {
+      dadosAtualizacao.dataHora = registroExistente.dataHora;
+      // Manter tempoNoStatus existente (não sobrescrever)
+      if (registroExistente.tempoNoStatus !== null && registroExistente.tempoNoStatus !== undefined) {
+        dadosAtualizacao.tempoNoStatus = registroExistente.tempoNoStatus;
+      }
     } else {
-      dadosAtualizacao.dataHora = typeof dataHoraInicio === 'string' 
-        ? Timestamp.fromDate(new Date(dataHoraInicio))
+      // Se não existe, criar novo registro com dataHora atual e tempoNoStatus = null
+      const os = ordens.find(o => o.id === osId);
+      dadosAtualizacao.dataHora = os && os.status === status 
+        ? Timestamp.fromDate(new Date(os.createdAt))
         : serverTimestamp();
-    }
-    
-    // Sempre atualizar o tempo
-    if (tempoNoStatus !== null) {
-      dadosAtualizacao.tempoNoStatus = tempoNoStatus;
+      dadosAtualizacao.tempoNoStatus = null;
     }
     
     await setDoc(doc(db, 'historico_status', historicoId), dadosAtualizacao, { merge: true });
@@ -457,7 +436,8 @@ export function useOrdensServico() {
     return contagem;
   }, [ordens]);
 
-  // Calcular tempo parcial de uma OS específica (soma de todos os tempos nos setores)
+  // Calcular tempo parcial de uma OS específica
+  // REGRA: Soma todos os tempoNoStatus já salvos. Se existir status atual sem tempo salvo, calcula em tempo real.
   const calcularTempoParcialOS = useCallback((osId: string): number => {
     const historicoOS = historico.filter(h => h.osId === osId);
     const os = ordens.find(o => o.id === osId);
@@ -465,39 +445,30 @@ export function useOrdensServico() {
     
     let tempoParcial = 0;
     
-    // Obter todos os status únicos que já passaram (incluindo o atual)
-    const statusPassados = new Set<string>();
+    // Obter fluxo de status
     const fluxoStatus = STATUS_POR_ATIVIDADE[os.atividadePrincipal] || [];
     const indexStatusAtual = fluxoStatus.indexOf(os.status);
     
-    // Marcar todos os status até o atual como "passados"
+    // Soma todos os status até o atual
     for (let i = 0; i <= indexStatusAtual && i < fluxoStatus.length; i++) {
-      statusPassados.add(fluxoStatus[i]);
-    }
-    
-    // Soma todos os tempos dos setores que já passaram
-    statusPassados.forEach(status => {
-      const registrosStatus = historicoOS
+      const status = fluxoStatus[i];
+      const registroStatus = historicoOS
         .filter(h => h.statusNovo === status)
-        .sort((a, b) => new Date(a.dataHora).getTime() - new Date(b.dataHora).getTime());
+        .sort((a, b) => new Date(a.dataHora).getTime() - new Date(b.dataHora).getTime())[0];
       
-      if (registrosStatus.length > 0) {
-        const registroInicial = registrosStatus[0];
-        const inicio = new Date(registroInicial.dataHora);
-        const fim = new Date();
-        
+      if (registroStatus) {
         if (status === os.status && os.status !== 'concluido') {
-          // Status atual em andamento: calcular em tempo real
+          // Status atual em andamento: calcular em tempo real (não salvo ainda)
+          const inicio = new Date(registroStatus.dataHora);
+          const fim = new Date();
           tempoParcial += calcularTempoUtil(inicio, fim);
-        } else if (registroInicial.tempoNoStatus) {
-          // Status passado com tempo salvo: usar tempo salvo
-          tempoParcial += registroInicial.tempoNoStatus;
-        } else {
-          // Status passado mas sem tempo salvo: calcular do início até agora
-          tempoParcial += calcularTempoUtil(inicio, fim);
+        } else if (registroStatus.tempoNoStatus !== null && registroStatus.tempoNoStatus !== undefined) {
+          // Status passado: usar tempo salvo (nunca recalcular)
+          tempoParcial += registroStatus.tempoNoStatus;
         }
+        // Se status passado mas tempoNoStatus é null, não soma (não foi salvo ainda)
       }
-    });
+    }
     
     return tempoParcial;
   }, [ordens, historico]);
