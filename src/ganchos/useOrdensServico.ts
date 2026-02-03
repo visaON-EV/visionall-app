@@ -71,6 +71,20 @@ function normalizarPrioridade(valor: unknown): OrdemServico['prioridade'] {
   return 'normal';
 }
 
+function parseDateInputToLocal(dateStr: string): Date | null {
+  if (!dateStr) return null;
+  if (dateStr.includes('T')) return new Date(dateStr);
+
+  const partes = dateStr.split('-').map(Number);
+  if (partes.length !== 3 || partes.some((p) => Number.isNaN(p))) {
+    return new Date(dateStr);
+  }
+
+  const [ano, mes, dia] = partes;
+  // Usa meio-dia para evitar problemas de fuso/DST ao salvar como Timestamp
+  return new Date(ano, mes - 1, dia, 12, 0, 0, 0);
+}
+
 export function useOrdensServico() {
   const [ordens, setOrdens] = useState<OrdemServico[]>([]);
   const [historico, setHistorico] = useState<HistoricoStatus[]>([]); // ainda apenas em memória
@@ -204,6 +218,9 @@ export function useOrdensServico() {
       updatedAt: new Date().toISOString()
     };
 
+    const dataAutorizacaoDate = parseDateInputToLocal(novaOS.dataAutorizacao);
+    const previsaoEntregaDate = parseDateInputToLocal(novaOS.previsaoEntrega);
+
     // Salva usando o id como id do documento, para ficar consistente no app
     const ref = doc(db, 'ordens_servico', novaOS.id);
     await setDoc(ref, {
@@ -214,8 +231,8 @@ export function useOrdensServico() {
       atividadeSecundaria: novaOS.atividadeSecundaria,
       prioridade: novaOS.prioridade,
       dataEntrada: novaOS.dataEntrada ? Timestamp.fromDate(new Date(novaOS.dataEntrada)) : serverTimestamp(),
-      dataAutorizacao: novaOS.dataAutorizacao ? Timestamp.fromDate(new Date(novaOS.dataAutorizacao)) : null,
-      previsaoEntrega: novaOS.previsaoEntrega ? Timestamp.fromDate(new Date(novaOS.previsaoEntrega)) : null,
+      dataAutorizacao: dataAutorizacaoDate ? Timestamp.fromDate(dataAutorizacaoDate) : null,
+      previsaoEntrega: previsaoEntregaDate ? Timestamp.fromDate(previsaoEntregaDate) : null,
       status: novaOS.status,
       observacoes: novaOS.observacoes,
       retrabalho: novaOS.retrabalho,
@@ -369,10 +386,18 @@ export function useOrdensServico() {
         ? { dataEntrada: dados.dataEntrada ? Timestamp.fromDate(new Date(dados.dataEntrada)) : null }
         : {}),
       ...(dados.dataAutorizacao !== undefined
-        ? { dataAutorizacao: dados.dataAutorizacao ? Timestamp.fromDate(new Date(dados.dataAutorizacao)) : null }
+        ? {
+          dataAutorizacao: dados.dataAutorizacao
+            ? Timestamp.fromDate(parseDateInputToLocal(dados.dataAutorizacao) ?? new Date(dados.dataAutorizacao))
+            : null
+        }
         : {}),
       ...(dados.previsaoEntrega !== undefined
-        ? { previsaoEntrega: dados.previsaoEntrega ? Timestamp.fromDate(new Date(dados.previsaoEntrega)) : null }
+        ? {
+          previsaoEntrega: dados.previsaoEntrega
+            ? Timestamp.fromDate(parseDateInputToLocal(dados.previsaoEntrega) ?? new Date(dados.previsaoEntrega))
+            : null
+        }
         : {}),
       ...(dados.status !== undefined ? { status: dados.status } : {}),
       ...(dados.observacoes !== undefined ? { observacoes: dados.observacoes } : {}),
