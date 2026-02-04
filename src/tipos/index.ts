@@ -231,5 +231,6 @@ export const RESPONSAVEIS_SETOR = [
   'Rafael',
   'Edmilson',
   'Stênio',
-  'Igor'
+  'Igor',
+  'Wannayara'
 ] as const;
