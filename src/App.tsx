@@ -14,7 +14,10 @@ import NotFound from "./páginas/NotFound";
 const queryClient = new QueryClient();
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, loading } = useAuth();
+  if (loading) {
+    return null;
+  }
   return isAuthenticated ? <>{children}</> : <Navigate to="/" replace />;
 }
 
