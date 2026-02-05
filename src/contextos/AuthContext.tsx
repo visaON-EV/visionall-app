@@ -18,7 +18,7 @@ interface AuthContextType {
   loading: boolean;
   isColaborador: boolean;
   colaboradores: Colaborador[];
-  login: (email: string, senha: string) => Promise<{ ok: true } | { ok: false; reason: 'credenciais' | 'perfil' | 'erro' }>;
+  login: (email: string, senha: string) => Promise<{ ok: true; reason?: never } | { ok: false; reason: 'credenciais' | 'perfil' | 'erro' }>;
   loginVisitante: () => void;
   logout: () => void;
 }
@@ -63,7 +63,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // 🔐 Login real
-  const login = async (email: string, senha: string): Promise<{ ok: true } | { ok: false; reason: 'credenciais' | 'perfil' | 'erro' }> => {
+  const login = async (email: string, senha: string): Promise<{ ok: true; reason?: never } | { ok: false; reason: 'credenciais' | 'perfil' | 'erro' }> => {
     try {
       const cred = await signInWithEmailAndPassword(auth, email, senha);
       const ref = doc(db, 'usuarios', cred.user.uid);
