@@ -94,6 +94,11 @@ export default function Dashboard() {
   // Status ativos para mostrar no grid
   const statusAtivos = Object.entries(contagemStatus).filter(([_, count]) => count > 0);
 
+  const formatarDataSomente = (data: string) => {
+    if (!data) return '-';
+    return new Date(data).toLocaleDateString('pt-BR', { timeZone: 'UTC' });
+  };
+
   return (
     <Layout>
       <div className="space-y-6">
@@ -664,14 +669,18 @@ export default function Dashboard() {
                     </div>
                     <span className="text-sm text-slate-400">{os.cliente}</span>
                   </div>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                     <div>
-                      <p className="text-slate-400">Tipo de Motor</p>
-                      <p className="text-white">{os.tipoMotor}</p>
+                      <p className="text-slate-400">Cliente</p>
+                      <p className="text-white">{os.cliente}</p>
                     </div>
                     <div>
-                      <p className="text-slate-400">Atividade</p>
-                      <p className="text-white">{ATIVIDADE_LABELS[os.atividadePrincipal]}</p>
+                      <p className="text-slate-400">Peça/Material</p>
+                      <p className="text-white">{os.materialAguardando || '-'}</p>
+                    </div>
+                    <div>
+                      <p className="text-slate-400">Prazo de Chegada</p>
+                      <p className="text-white">{formatarDataSomente(os.dataEntregaMaterial || '')}</p>
                     </div>
                   </div>
                 </div>

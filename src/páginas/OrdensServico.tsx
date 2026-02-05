@@ -70,6 +70,8 @@ export default function OrdensServico() {
   const [filtroStatus, setFiltroStatus] = useState<string>('todos');
   const [busca, setBusca] = useState('');
   const [responsavelSelecionado, setResponsavelSelecionado] = useState('');
+  const [materialAguardandoInput, setMaterialAguardandoInput] = useState('');
+  const [dataEntregaMaterialInput, setDataEntregaMaterialInput] = useState('');
   
   const formInicial = {
     numero: '',
@@ -173,6 +175,8 @@ export default function OrdensServico() {
     setOsParaAtualizar(os);
     setStatusNovo(novoStatus);
     setResponsavelSelecionado('');
+    setMaterialAguardandoInput(novoStatus === 'aguardando_material' ? (os.materialAguardando || '') : '');
+    setDataEntregaMaterialInput(novoStatus === 'aguardando_material' ? (os.dataEntregaMaterial || '') : '');
     setModalResponsavel(true);
   };
 
@@ -189,22 +193,45 @@ export default function OrdensServico() {
 
   const handleConfirmarResponsavel = async () => {
     if (!osParaAtualizar || !statusNovo) return;
-    if (!responsavelSelecionado) {
-      toast({
-        title: 'Erro',
-        description: 'Selecione um responsável para o novo status.',
-        variant: 'destructive'
-      });
-      return;
-    }
 
     try {
-      await atualizarStatus(
-        osParaAtualizar.id,
-        statusNovo,
-        usuario?.colaboradorId || '',
-        responsavelSelecionado
-      );
+      if (statusNovo === 'aguardando_material') {
+        if (!materialAguardandoInput.trim() || !dataEntregaMaterialInput) {
+          toast({
+            title: 'Erro',
+            description: 'Informe a peça/material aguardado e a data de entrega.',
+            variant: 'destructive'
+          });
+          return;
+        }
+
+        await atualizarStatus(
+          osParaAtualizar.id,
+          statusNovo,
+          usuario?.colaboradorId || '',
+          usuario?.nome || 'Sistema',
+          {
+            materialAguardando: materialAguardandoInput.trim(),
+            dataEntregaMaterial: dataEntregaMaterialInput
+          }
+        );
+      } else {
+        if (!responsavelSelecionado) {
+          toast({
+            title: 'Erro',
+            description: 'Selecione um responsável para o novo status.',
+            variant: 'destructive'
+          });
+          return;
+        }
+
+        await atualizarStatus(
+          osParaAtualizar.id,
+          statusNovo,
+          usuario?.colaboradorId || '',
+          responsavelSelecionado
+        );
+      }
 
       toast({
         title: 'Status atualizado!',
@@ -215,6 +242,8 @@ export default function OrdensServico() {
       setOsParaAtualizar(null);
       setStatusNovo(null);
       setResponsavelSelecionado('');
+      setMaterialAguardandoInput('');
+      setDataEntregaMaterialInput('');
     } catch (error) {
       toast({
         title: 'Erro ao atualizar status',
@@ -585,35 +614,62 @@ export default function OrdensServico() {
           setOsParaAtualizar(null);
           setStatusNovo(null);
           setResponsavelSelecionado('');
+          setMaterialAguardandoInput('');
+          setDataEntregaMaterialInput('');
         }
       }}>
         <DialogContent className="bg-slate-800 border-slate-700 max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-white">Selecionar responsável</DialogTitle>
+            <DialogTitle className="text-white">
+              {statusNovo === 'aguardando_material' ? 'Informar material aguardado' : 'Selecionar responsável'}
+            </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="text-sm text-slate-400">
               {osParaAtualizar?.numero ? `O.S. ${osParaAtualizar.numero}` : ''}{' '}
               {statusNovo ? `• ${STATUS_LABELS[statusNovo]}` : ''}
             </div>
-            <div className="space-y-2">
-              <Label className="text-slate-300">Responsável do setor</Label>
-              <Select 
-                value={responsavelSelecionado} 
-                onValueChange={setResponsavelSelecionado}
-              >
-                <SelectTrigger className="bg-slate-700 border-slate-600 text-white">
-                  <SelectValue placeholder="Selecionar" />
-                </SelectTrigger>
-                <SelectContent className="bg-slate-800 border-slate-700">
-                  {RESPONSAVEIS_SETOR.map((nome) => (
-                    <SelectItem key={nome} value={nome} className="text-white">
-                      {nome}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {statusNovo === 'aguardando_material' ? (
+              <>
+                <div className="space-y-2">
+                  <Label className="text-slate-300">Peça/Material aguardado</Label>
+                  <Input
+                    value={materialAguardandoInput}
+                    onChange={(e) => setMaterialAguardandoInput(e.target.value)}
+                    className="bg-slate-700 border-slate-600 text-white"
+                    placeholder="Ex: Rolamento 6205"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-slate-300">Data de entrega do material</Label>
+                  <Input
+                    type="date"
+                    value={dataEntregaMaterialInput}
+                    onChange={(e) => setDataEntregaMaterialInput(e.target.value)}
+                    className="bg-slate-700 border-slate-600 text-white"
+                  />
+                </div>
+              </>
+            ) : (
+              <div className="space-y-2">
+                <Label className="text-slate-300">Responsável do setor</Label>
+                <Select 
+                  value={responsavelSelecionado} 
+                  onValueChange={setResponsavelSelecionado}
+                >
+                  <SelectTrigger className="bg-slate-700 border-slate-600 text-white">
+                    <SelectValue placeholder="Selecionar" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-slate-800 border-slate-700">
+                    {RESPONSAVEIS_SETOR.map((nome) => (
+                      <SelectItem key={nome} value={nome} className="text-white">
+                        {nome}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div className="flex justify-end gap-3 pt-2">
               <Button 
                 type="button" 

@@ -140,6 +140,11 @@ export function useOrdensServico() {
           observacoes: data.observacoes ?? '',
           retrabalho: data.retrabalho ?? '',
           colaboradorAtual: data.colaboradorAtual,
+          materialAguardando: data.materialAguardando ?? '',
+          dataEntregaMaterial:
+            data.dataEntregaMaterial instanceof Timestamp
+              ? data.dataEntregaMaterial.toDate().toISOString()
+              : (data.dataEntregaMaterial ?? ''),
           motivoAtraso: data.motivoAtraso,
           setorAtraso: data.setorAtraso,
           createdAt: createdAtRaw,
@@ -220,6 +225,7 @@ export function useOrdensServico() {
 
     const dataAutorizacaoDate = parseDateInputToLocal(novaOS.dataAutorizacao);
     const previsaoEntregaDate = parseDateInputToLocal(novaOS.previsaoEntrega);
+    const dataEntregaMaterialDate = parseDateInputToLocal(novaOS.dataEntregaMaterial ?? '');
 
     // Salva usando o id como id do documento, para ficar consistente no app
     const ref = doc(db, 'ordens_servico', novaOS.id);
@@ -237,6 +243,8 @@ export function useOrdensServico() {
       observacoes: novaOS.observacoes,
       retrabalho: novaOS.retrabalho,
       colaboradorAtual: novaOS.colaboradorAtual ?? '',
+      materialAguardando: novaOS.materialAguardando ?? '',
+      dataEntregaMaterial: dataEntregaMaterialDate ? Timestamp.fromDate(dataEntregaMaterialDate) : null,
       motivoAtraso: novaOS.motivoAtraso ?? '',
       setorAtraso: novaOS.setorAtraso ?? '',
       createdAt: serverTimestamp(),
@@ -266,7 +274,11 @@ export function useOrdensServico() {
     osId: string, 
     novoStatus: OSStatus, 
     colaboradorId: string, 
-    colaboradorNome: string
+    colaboradorNome: string,
+    dadosExtras?: {
+      materialAguardando?: string;
+      dataEntregaMaterial?: string;
+    }
   ) => {
     const osIndex = ordens.findIndex(o => o.id === osId);
     if (osIndex === -1) return null;
@@ -296,6 +308,8 @@ export function useOrdensServico() {
       ...os,
       status: novoStatus,
       colaboradorAtual: colaboradorId,
+      ...(dadosExtras?.materialAguardando !== undefined ? { materialAguardando: dadosExtras.materialAguardando } : {}),
+      ...(dadosExtras?.dataEntregaMaterial !== undefined ? { dataEntregaMaterial: dadosExtras.dataEntregaMaterial } : {}),
       updatedAt: new Date().toISOString()
     };
     
@@ -303,6 +317,14 @@ export function useOrdensServico() {
     await updateDoc(ref, {
       status: osAtualizada.status,
       colaboradorAtual: osAtualizada.colaboradorAtual ?? '',
+      ...(dadosExtras?.materialAguardando !== undefined ? { materialAguardando: dadosExtras.materialAguardando ?? '' } : {}),
+      ...(dadosExtras?.dataEntregaMaterial !== undefined
+        ? {
+          dataEntregaMaterial: dadosExtras.dataEntregaMaterial
+            ? Timestamp.fromDate(parseDateInputToLocal(dadosExtras.dataEntregaMaterial) ?? new Date(dadosExtras.dataEntregaMaterial))
+            : null
+        }
+        : {}),
       updatedAt: serverTimestamp()
     });
     
@@ -403,6 +425,14 @@ export function useOrdensServico() {
       ...(dados.observacoes !== undefined ? { observacoes: dados.observacoes } : {}),
       ...(dados.retrabalho !== undefined ? { retrabalho: dados.retrabalho } : {}),
       ...(dados.colaboradorAtual !== undefined ? { colaboradorAtual: dados.colaboradorAtual ?? '' } : {}),
+      ...(dados.materialAguardando !== undefined ? { materialAguardando: dados.materialAguardando ?? '' } : {}),
+      ...(dados.dataEntregaMaterial !== undefined
+        ? {
+          dataEntregaMaterial: dados.dataEntregaMaterial
+            ? Timestamp.fromDate(parseDateInputToLocal(dados.dataEntregaMaterial) ?? new Date(dados.dataEntregaMaterial))
+            : null
+        }
+        : {}),
       ...(dados.motivoAtraso !== undefined ? { motivoAtraso: dados.motivoAtraso ?? '' } : {}),
       ...(dados.setorAtraso !== undefined ? { setorAtraso: dados.setorAtraso ?? '' } : {}),
       updatedAt: serverTimestamp()
