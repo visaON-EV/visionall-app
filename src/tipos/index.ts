@@ -115,6 +115,8 @@ export interface OrdemServico {
   observacoes: string;
   retrabalho: string;
   colaboradorAtual?: string;
+  materialAguardando?: string;
+  dataEntregaMaterial?: string;
   motivoAtraso?: string; // Campo editável para motivo do atraso
   setorAtraso?: string; // Campo editável para setor do atraso
   createdAt: string;
