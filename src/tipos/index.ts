@@ -148,7 +148,7 @@ export interface Usuario {
   id: string;
   nome: string;
   email: string;
-  tipo: 'colaborador' | 'visitante';
+  tipo: 'colaborador' | 'visitante' | 'developer' | 'admin';
   colaboradorId?: string;
 }
 

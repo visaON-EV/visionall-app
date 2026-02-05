@@ -18,7 +18,7 @@ interface AuthContextType {
   loading: boolean;
   isColaborador: boolean;
   colaboradores: Colaborador[];
-  login: (email: string, senha: string) => Promise<boolean>;
+  login: (email: string, senha: string) => Promise<{ ok: true } | { ok: false; reason: 'credenciais' | 'perfil' | 'erro' }>;
   loginVisitante: () => void;
   logout: () => void;
 }
@@ -63,13 +63,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // 🔐 Login real
-  const login = async (email: string, senha: string): Promise<boolean> => {
+  const login = async (email: string, senha: string): Promise<{ ok: true } | { ok: false; reason: 'credenciais' | 'perfil' | 'erro' }> => {
     try {
-      await signInWithEmailAndPassword(auth, email, senha);
-      return true;
+      const cred = await signInWithEmailAndPassword(auth, email, senha);
+      const ref = doc(db, 'usuarios', cred.user.uid);
+      const snap = await getDoc(ref);
+
+      if (!snap.exists()) {
+        await signOut(auth);
+        return { ok: false, reason: 'perfil' };
+      }
+
+      const data = snap.data();
+      const usuarioFirebase: Usuario = {
+        id: cred.user.uid,
+        nome: data.nome,
+        email: data.email,
+        tipo: data.tipo,
+        colaboradorId: data.colaboradorId
+      };
+
+      setUsuario(usuarioFirebase);
+      return { ok: true };
     } catch (error) {
       console.error('Erro ao logar:', error);
-      return false;
+      return { ok: false, reason: 'credenciais' };
     }
   };
 
@@ -96,7 +114,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         usuario,
         isAuthenticated: !!usuario,
         loading,
-        isColaborador: usuario?.tipo === 'colaborador',
+        isColaborador: usuario?.tipo !== 'visitante',
         colaboradores,
         login,
         loginVisitante,

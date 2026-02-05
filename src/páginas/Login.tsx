@@ -21,18 +21,22 @@ export default function Login() {
     e.preventDefault();
     setCarregando(true);
 
-    const sucesso = await login(email, senha);
-    
-    if (sucesso) {
+    const resultado = await login(email, senha);
+
+    if (resultado.ok) {
       toast({
         title: 'Login realizado!',
         description: 'Bem-vindo ao Vision All',
       });
       navigate('/dashboard');
     } else {
+      const descricao =
+        resultado.reason === 'perfil'
+          ? 'Usuário sem perfil cadastrado. Fale com o administrador.'
+          : 'Email ou senha incorretos';
       toast({
         title: 'Erro no login',
-        description: 'Email ou senha incorretos',
+        description: descricao,
         variant: 'destructive',
       });
     }
