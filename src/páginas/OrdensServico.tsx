@@ -48,7 +48,6 @@ import {
 import { 
   Plus, 
   Search, 
-  Eye, 
   Edit, 
   ArrowRight,
   Filter
@@ -139,6 +138,11 @@ export default function OrdensServico() {
     });
     setOsSelecionada(os);
     setModalEdicao(true);
+  };
+
+  const abrirDetalhesOS = (os: OrdemServico) => {
+    setOsSelecionada(os);
+    setDetalhesAberto(true);
   };
 
   const handleSalvarEdicao = async (e: React.FormEvent) => {
@@ -464,7 +468,19 @@ export default function OrdensServico() {
                       const proximoStatus = getProximoStatus(os);
                       
                       return (
-                        <TableRow key={os.id} className="border-slate-700 hover:bg-slate-700/30">
+                        <TableRow 
+                          key={os.id} 
+                          className="border-slate-700 hover:bg-slate-700/30 cursor-pointer"
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => abrirDetalhesOS(os)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              abrirDetalhesOS(os);
+                            }
+                          }}
+                        >
                           <TableCell className="font-mono text-blue-400 font-semibold">
                             {os.numero}
                           </TableCell>
@@ -480,7 +496,7 @@ export default function OrdensServico() {
                               {PRIORIDADE_LABELS[os.prioridade] || 'Normal'}
                             </Badge>
                           </TableCell>
-                          <TableCell>
+                          <TableCell onClick={(e) => e.stopPropagation()}>
                             {isColaborador && os.status !== 'concluido' ? (
                               <Select 
                                 value={os.status} 
@@ -506,19 +522,8 @@ export default function OrdensServico() {
                               </Badge>
                             )}
                           </TableCell>
-                          <TableCell className="text-right">
+                          <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                             <div className="flex items-center justify-end gap-2">
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="text-slate-400 hover:text-white"
-                                onClick={() => {
-                                  setOsSelecionada(os);
-                                  setDetalhesAberto(true);
-                                }}
-                              >
-                                <Eye className="w-4 h-4" />
-                              </Button>
                               {isColaborador && (
                                 <Button
                                   size="sm"
