@@ -47,7 +47,8 @@ export const ALL_STATUS = [
   'pintura',
   'acabamento',
   'concluido',
-  'aguardando_material'
+  'aguardando_material',
+  'aguardando_execucao'
 ] as const;
 
 export type OSStatus = typeof ALL_STATUS[number];
@@ -67,7 +68,8 @@ export const STATUS_LABELS: Record<OSStatus, string> = {
   pintura: 'Pintura',
   acabamento: 'Acabamento',
   concluido: 'Concluído',
-  aguardando_material: 'Aguardando Material Externo'
+  aguardando_material: 'Aguardando Material Externo',
+  aguardando_execucao: 'Aguardando Execução'
 };
 
 export const STATUS_COLORS: Record<OSStatus, string> = {
@@ -85,7 +87,8 @@ export const STATUS_COLORS: Record<OSStatus, string> = {
   pintura: 'bg-pink-500',
   acabamento: 'bg-teal-500',
   concluido: 'bg-green-500',
-  aguardando_material: 'bg-gray-500'
+  aguardando_material: 'bg-gray-500',
+  aguardando_execucao: 'bg-sky-500'
 };
 
 // Fluxo de status por atividade principal (sem peritagem)

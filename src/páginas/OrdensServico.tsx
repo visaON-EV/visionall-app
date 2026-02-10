@@ -273,7 +273,11 @@ export default function OrdensServico() {
   };
 
   // Obter todos os status possíveis para o filtro
-  const todosStatus = [...new Set(Object.values(STATUS_POR_ATIVIDADE).flat())];
+  const todosStatus = [...new Set([
+    ...Object.values(STATUS_POR_ATIVIDADE).flat(),
+    'aguardando_material',
+    'aguardando_execucao'
+  ])];
 
   return (
     <Layout>
@@ -536,12 +540,15 @@ export default function OrdensServico() {
                                 </SelectTrigger>
                                 <SelectContent className="bg-slate-800 border-slate-700">
                                   {fluxo.map(status => (
-                                    <SelectItem key={status} value={status} className="text-white">
+                                  <SelectItem key={status} value={status} className="text-white">
                                       {STATUS_LABELS[status]}
-                                    </SelectItem>
+                                  </SelectItem>
                                   ))}
                                   <SelectItem value="aguardando_material" className="text-white">
                                     {STATUS_LABELS.aguardando_material}
+                                  </SelectItem>
+                                  <SelectItem value="aguardando_execucao" className="text-white">
+                                    {STATUS_LABELS.aguardando_execucao}
                                   </SelectItem>
                                 </SelectContent>
                               </Select>
