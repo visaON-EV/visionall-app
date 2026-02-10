@@ -1,10 +1,38 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Layout from '@/componentes/Layout';
 import { useOrdensServico } from '@/ganchos/useOrdensServico';
-import { ATIVIDADE_LABELS, ATIVIDADES_PRINCIPAIS, STATUS_LABELS, AtividadePrincipal, OSStatus } from '@/tipos';
+import { 
+  ATIVIDADE_LABELS, 
+  ATIVIDADES_PRINCIPAIS, 
+  STATUS_LABELS, 
+  ALL_STATUS,
+  AtividadePrincipal, 
+  OSStatus,
+  PRIORIDADES,
+  PRIORIDADE_LABELS,
+  Prioridade
+} from '@/tipos';
 import { Textarea } from '@/componentes/interfaces do usuario/textarea';
+import { Input } from '@/componentes/interfaces do usuario/input';
+import { Label } from '@/componentes/interfaces do usuario/label';
+import { Badge } from '@/componentes/interfaces do usuario/badge';
 import { Button } from '@/componentes/interfaces do usuario/botão';
 import { useToast } from '@/ganchos/use-toast';
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/componentes/interfaces do usuario/select';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/componentes/interfaces do usuario/tabela';
 import { Card, CardContent, CardHeader, CardTitle } from '@/componentes/interfaces do usuario/cartão';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/componentes/interfaces do usuario/diálogo';
 import { 
@@ -14,7 +42,10 @@ import {
   Clock,
   TrendingUp,
   Wrench,
-  AlertTriangle
+  AlertTriangle,
+  Filter,
+  Calendar,
+  Search
 } from 'lucide-react';
 import {
   PieChart,
@@ -37,15 +68,198 @@ const CORES_ATIVIDADES = {
   balanceamento: '#8B5CF6'
 };
 
+const MESES = [
+  { value: 1, label: 'Janeiro' },
+  { value: 2, label: 'Fevereiro' },
+  { value: 3, label: 'MarÃ§o' },
+  { value: 4, label: 'Abril' },
+  { value: 5, label: 'Maio' },
+  { value: 6, label: 'Junho' },
+  { value: 7, label: 'Julho' },
+  { value: 8, label: 'Agosto' },
+  { value: 9, label: 'Setembro' },
+  { value: 10, label: 'Outubro' },
+  { value: 11, label: 'Novembro' },
+  { value: 12, label: 'Dezembro' }
+];
+
 export default function Relatorios() {
-  const { ordens, contarPorAtividade, relatorioPrazos, editarOS } = useOrdensServico();
+  const { ordens, historico, editarOS } = useOrdensServico();
   const { toast } = useToast();
   const [modalForaDoPrazoAberto, setModalForaDoPrazoAberto] = useState(false);
   const [motivosEditaveis, setMotivosEditaveis] = useState<Record<string, string>>({});
   const [setoresEditaveis, setSetoresEditaveis] = useState<Record<string, string>>({});
-  
-  const contagemAtividade = contarPorAtividade();
-  const prazos = relatorioPrazos();
+  const [filtroTexto, setFiltroTexto] = useState('');
+  const [filtroStatus, setFiltroStatus] = useState<OSStatus | 'todos'>('todos');
+  const [filtroAtividade, setFiltroAtividade] = useState<AtividadePrincipal | 'todas'>('todas');
+  const [filtroPrioridade, setFiltroPrioridade] = useState<Prioridade | 'todas'>('todas');
+  const [campoData, setCampoData] = useState<'dataEntrada' | 'dataAutorizacao' | 'previsaoEntrega' | 'conclusao'>('dataEntrada');
+  const [filtroPeriodo, setFiltroPeriodo] = useState<'todos' | 'mes_atual' | 'ano_atual' | 'mes_especifico' | 'ano_especifico' | 'intervalo'>('todos');
+  const [filtroMes, setFiltroMes] = useState<number>(new Date().getMonth() + 1);
+  const [filtroAno, setFiltroAno] = useState<number>(new Date().getFullYear());
+  const [dataInicio, setDataInicio] = useState('');
+  const [dataFim, setDataFim] = useState('');
+
+  const parseData = (valor?: string) => {
+    if (!valor) return null;
+    const data = new Date(valor);
+    if (Number.isNaN(data.getTime())) return null;
+    return data;
+  };
+
+  const obterDataBaseOS = (os: typeof ordens[number]) => {
+    if (campoData === 'dataEntrada') return parseData(os.dataEntrada || os.createdAt);
+    if (campoData === 'dataAutorizacao') return parseData(os.dataAutorizacao);
+    if (campoData === 'previsaoEntrega') return parseData(os.previsaoEntrega);
+    if (campoData === 'conclusao') {
+      if (os.status !== 'concluido') return null;
+      return parseData(os.updatedAt);
+    }
+    return null;
+  };
+
+  const anosDisponiveis = useMemo(() => {
+    const anos = new Set<number>();
+    ordens.forEach(os => {
+      const data = parseData(os.dataEntrada || os.createdAt);
+      if (data) anos.add(data.getFullYear());
+    });
+    if (anos.size === 0) anos.add(new Date().getFullYear());
+    return Array.from(anos).sort((a, b) => b - a);
+  }, [ordens]);
+
+  useEffect(() => {
+    if (!anosDisponiveis.includes(filtroAno)) {
+      setFiltroAno(anosDisponiveis[0]);
+    }
+  }, [anosDisponiveis, filtroAno]);
+
+  const intervaloPeriodo = useMemo(() => {
+    const hoje = new Date();
+    const inicio = new Date(hoje.getFullYear(), hoje.getMonth(), 1, 0, 0, 0, 0);
+    const fim = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0, 23, 59, 59, 999);
+
+    if (filtroPeriodo === 'mes_atual') {
+      return { inicio, fim };
+    }
+    if (filtroPeriodo === 'ano_atual') {
+      return { 
+        inicio: new Date(hoje.getFullYear(), 0, 1, 0, 0, 0, 0), 
+        fim: new Date(hoje.getFullYear(), 11, 31, 23, 59, 59, 999)
+      };
+    }
+    if (filtroPeriodo === 'mes_especifico') {
+      return {
+        inicio: new Date(filtroAno, filtroMes - 1, 1, 0, 0, 0, 0),
+        fim: new Date(filtroAno, filtroMes, 0, 23, 59, 59, 999)
+      };
+    }
+    if (filtroPeriodo === 'ano_especifico') {
+      return {
+        inicio: new Date(filtroAno, 0, 1, 0, 0, 0, 0),
+        fim: new Date(filtroAno, 11, 31, 23, 59, 59, 999)
+      };
+    }
+    if (filtroPeriodo === 'intervalo') {
+      const inicioIntervalo = dataInicio ? new Date(`${dataInicio}T00:00:00`) : null;
+      const fimIntervalo = dataFim ? new Date(`${dataFim}T23:59:59`) : null;
+      return { inicio: inicioIntervalo, fim: fimIntervalo };
+    }
+    return { inicio: null, fim: null };
+  }, [filtroPeriodo, filtroMes, filtroAno, dataInicio, dataFim]);
+
+  const ordensFiltradas = useMemo(() => {
+    const termo = filtroTexto.trim().toLowerCase();
+    return ordens.filter(os => {
+      if (termo) {
+        const matchTexto = [os.numero, os.cliente, os.tipoMotor]
+          .filter(Boolean)
+          .some(v => String(v).toLowerCase().includes(termo));
+        if (!matchTexto) return false;
+      }
+
+      if (filtroStatus !== 'todos' && os.status !== filtroStatus) return false;
+      if (filtroAtividade !== 'todas' && os.atividadePrincipal !== filtroAtividade) return false;
+      if (filtroPrioridade !== 'todas' && os.prioridade !== filtroPrioridade) return false;
+
+      if (filtroPeriodo !== 'todos') {
+        const dataBase = obterDataBaseOS(os);
+        if (!dataBase) return false;
+        const { inicio, fim } = intervaloPeriodo;
+        if (inicio && dataBase < inicio) return false;
+        if (fim && dataBase > fim) return false;
+      }
+
+      return true;
+    });
+  }, [ordens, filtroTexto, filtroStatus, filtroAtividade, filtroPrioridade, filtroPeriodo, intervaloPeriodo, campoData]);
+
+  const contagemAtividade = useMemo(() => {
+    const contagem: Record<AtividadePrincipal, number> = {
+      rebobinar: 0,
+      rejuvenescer: 0,
+      manutencao_mecanica: 0,
+      balanceamento: 0
+    };
+    ordensFiltradas.forEach(os => {
+      contagem[os.atividadePrincipal]++;
+    });
+    return contagem;
+  }, [ordensFiltradas]);
+
+  const prazos = useMemo(() => {
+    const concluidas = ordensFiltradas.filter(os => os.status === 'concluido');
+    let noPrazo = 0;
+    let foraDoPrazo = 0;
+    const detalhesForaDoPrazo: Array<{
+      osId: string;
+      numero: string;
+      cliente: string;
+      setorAtraso: string;
+      motivoAtraso: string;
+      diasAtraso: number;
+    }> = [];
+
+    concluidas.forEach(os => {
+      if (!os.previsaoEntrega) {
+        noPrazo++;
+        return;
+      }
+
+      const previsao = new Date(os.previsaoEntrega);
+      const conclusao = new Date(os.updatedAt);
+      const previsaoNorm = new Date(previsao.getFullYear(), previsao.getMonth(), previsao.getDate(), 23, 59, 59);
+      const conclusaoNorm = new Date(conclusao.getFullYear(), conclusao.getMonth(), conclusao.getDate());
+
+      if (conclusaoNorm <= previsaoNorm) {
+        noPrazo++;
+      } else {
+        foraDoPrazo++;
+
+        const historicoOS = historico.filter(h => h.osId === os.id);
+        let maiorTempo = 0;
+        let setorMaiorTempo = 'NÃ£o identificado';
+        historicoOS.forEach(h => {
+          if (h.tempoNoStatus && h.tempoNoStatus > maiorTempo) {
+            maiorTempo = h.tempoNoStatus;
+            setorMaiorTempo = h.statusNovo;
+          }
+        });
+
+        const diasAtraso = Math.ceil((conclusaoNorm.getTime() - previsaoNorm.getTime()) / (1000 * 60 * 60 * 24));
+        detalhesForaDoPrazo.push({
+          osId: os.id,
+          numero: os.numero,
+          cliente: os.cliente,
+          setorAtraso: setorMaiorTempo,
+          motivoAtraso: os.motivoAtraso || `Maior tempo no setor: ${setorMaiorTempo}`,
+          diasAtraso
+        });
+      }
+    });
+
+    return { noPrazo, foraDoPrazo, total: concluidas.length, detalhesForaDoPrazo };
+  }, [ordensFiltradas, historico]);
 
   // Inicializar campos editáveis quando abrir modal
   useEffect(() => {
@@ -91,10 +305,45 @@ export default function Relatorios() {
     fill: CORES_ATIVIDADES[atividade]
   }));
 
+  const dadosMensais = useMemo(() => {
+    const base = MESES.map(m => ({ mes: m.label, quantidade: 0 }));
+    ordensFiltradas.forEach(os => {
+      const data = obterDataBaseOS(os);
+      if (!data) return;
+      if (data.getFullYear() !== filtroAno) return;
+      base[data.getMonth()].quantidade += 1;
+    });
+    return base;
+  }, [ordensFiltradas, filtroAno, campoData]);
+
   // Calcular porcentagem no prazo
   const porcentagemNoPrazo = prazos.total > 0 
     ? Math.round((prazos.noPrazo / prazos.total) * 100) 
     : 0;
+
+  const totalFiltrado = ordensFiltradas.length;
+  const totalConcluidas = ordensFiltradas.filter(os => os.status === 'concluido').length;
+  const totalEmAndamento = totalFiltrado - totalConcluidas;
+
+  const limparFiltros = () => {
+    setFiltroTexto('');
+    setFiltroStatus('todos');
+    setFiltroAtividade('todas');
+    setFiltroPrioridade('todas');
+    setCampoData('dataEntrada');
+    setFiltroPeriodo('todos');
+    setFiltroMes(new Date().getMonth() + 1);
+    setFiltroAno(new Date().getFullYear());
+    setDataInicio('');
+    setDataFim('');
+  };
+
+  const formatarData = (data?: string) => {
+    if (!data) return '-';
+    const parsed = new Date(data);
+    if (Number.isNaN(parsed.getTime())) return '-';
+    return parsed.toLocaleDateString('pt-BR');
+  };
 
   return (
     <Layout>
@@ -105,6 +354,211 @@ export default function Relatorios() {
             <p className="text-slate-400">Análise de desempenho e produtividade</p>
           </div>
         </div>
+
+        {/* Filtros BI */}
+        <Card className="bg-slate-800/50 border-slate-700">
+          <CardHeader>
+            <CardTitle className="text-white flex items-center gap-2">
+              <Filter className="w-5 h-5 text-cyan-400" />
+              Filtros BI
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label className="text-slate-300">Busca rÃ¡pida</Label>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                  <Input
+                    placeholder="NÃºmero, cliente ou motor"
+                    value={filtroTexto}
+                    onChange={(e) => setFiltroTexto(e.target.value)}
+                    className="pl-10 bg-slate-700 border-slate-600 text-white"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-slate-300">Status</Label>
+                <Select value={filtroStatus} onValueChange={(value) => setFiltroStatus(value as OSStatus | 'todos')}>
+                  <SelectTrigger className="bg-slate-700 border-slate-600 text-white">
+                    <SelectValue placeholder="Todos os status" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-slate-800 border-slate-700">
+                    <SelectItem value="todos" className="text-white">Todos</SelectItem>
+                    {ALL_STATUS.map(status => (
+                      <SelectItem key={status} value={status} className="text-white">
+                        {STATUS_LABELS[status]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-slate-300">Atividade Principal</Label>
+                <Select value={filtroAtividade} onValueChange={(value) => setFiltroAtividade(value as AtividadePrincipal | 'todas')}>
+                  <SelectTrigger className="bg-slate-700 border-slate-600 text-white">
+                    <SelectValue placeholder="Todas as atividades" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-slate-800 border-slate-700">
+                    <SelectItem value="todas" className="text-white">Todas</SelectItem>
+                    {ATIVIDADES_PRINCIPAIS.map(atividade => (
+                      <SelectItem key={atividade} value={atividade} className="text-white">
+                        {ATIVIDADE_LABELS[atividade]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label className="text-slate-300">Prioridade</Label>
+                <Select value={filtroPrioridade} onValueChange={(value) => setFiltroPrioridade(value as Prioridade | 'todas')}>
+                  <SelectTrigger className="bg-slate-700 border-slate-600 text-white">
+                    <SelectValue placeholder="Todas as prioridades" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-slate-800 border-slate-700">
+                    <SelectItem value="todas" className="text-white">Todas</SelectItem>
+                    {PRIORIDADES.map(prioridade => (
+                      <SelectItem key={prioridade} value={prioridade} className="text-white">
+                        {PRIORIDADE_LABELS[prioridade]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-slate-300">Campo de data</Label>
+                <Select value={campoData} onValueChange={(value) => setCampoData(value as typeof campoData)}>
+                  <SelectTrigger className="bg-slate-700 border-slate-600 text-white">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-slate-800 border-slate-700">
+                    <SelectItem value="dataEntrada" className="text-white">Data de Entrada</SelectItem>
+                    <SelectItem value="dataAutorizacao" className="text-white">Data de AutorizaÃ§Ã£o</SelectItem>
+                    <SelectItem value="previsaoEntrega" className="text-white">PrevisÃ£o de Entrega</SelectItem>
+                    <SelectItem value="conclusao" className="text-white">Data de ConclusÃ£o</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-slate-300">PerÃ­odo</Label>
+                <Select value={filtroPeriodo} onValueChange={(value) => setFiltroPeriodo(value as typeof filtroPeriodo)}>
+                  <SelectTrigger className="bg-slate-700 border-slate-600 text-white">
+                    <Calendar className="w-4 h-4 mr-2" />
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-slate-800 border-slate-700">
+                    <SelectItem value="todos" className="text-white">Todos</SelectItem>
+                    <SelectItem value="mes_atual" className="text-white">MÃªs Atual</SelectItem>
+                    <SelectItem value="ano_atual" className="text-white">Ano Atual</SelectItem>
+                    <SelectItem value="mes_especifico" className="text-white">MÃªs EspecÃ­fico</SelectItem>
+                    <SelectItem value="ano_especifico" className="text-white">Ano EspecÃ­fico</SelectItem>
+                    <SelectItem value="intervalo" className="text-white">Intervalo Personalizado</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {(filtroPeriodo === 'mes_especifico' || filtroPeriodo === 'ano_especifico' || filtroPeriodo === 'intervalo') && (
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                {(filtroPeriodo === 'mes_especifico' || filtroPeriodo === 'ano_especifico') && (
+                  <div className="space-y-2">
+                    <Label className="text-slate-300">Ano</Label>
+                    <Select value={String(filtroAno)} onValueChange={(value) => setFiltroAno(Number(value))}>
+                      <SelectTrigger className="bg-slate-700 border-slate-600 text-white">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="bg-slate-800 border-slate-700">
+                        {anosDisponiveis.map(ano => (
+                          <SelectItem key={ano} value={String(ano)} className="text-white">
+                            {ano}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                {filtroPeriodo === 'mes_especifico' && (
+                  <div className="space-y-2">
+                    <Label className="text-slate-300">MÃªs</Label>
+                    <Select value={String(filtroMes)} onValueChange={(value) => setFiltroMes(Number(value))}>
+                      <SelectTrigger className="bg-slate-700 border-slate-600 text-white">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="bg-slate-800 border-slate-700">
+                        {MESES.map(mes => (
+                          <SelectItem key={mes.value} value={String(mes.value)} className="text-white">
+                            {mes.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                {filtroPeriodo === 'intervalo' && (
+                  <>
+                    <div className="space-y-2">
+                      <Label className="text-slate-300">Data inicial</Label>
+                      <Input
+                        type="date"
+                        value={dataInicio}
+                        onChange={(e) => setDataInicio(e.target.value)}
+                        className="bg-slate-700 border-slate-600 text-white"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-slate-300">Data final</Label>
+                      <Input
+                        type="date"
+                        value={dataFim}
+                        onChange={(e) => setDataFim(e.target.value)}
+                        className="bg-slate-700 border-slate-600 text-white"
+                      />
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+
+            <div className="flex justify-end">
+              <Button variant="outline" className="border-slate-600 text-slate-300" onClick={limparFiltros}>
+                Limpar filtros
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Resumo Geral */}
+        <Card className="bg-slate-800/50 border-slate-700">
+          <CardContent className="p-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="bg-slate-700/40 rounded-lg p-4">
+                <p className="text-slate-400 text-sm">Total Filtrado</p>
+                <p className="text-white text-2xl font-bold">{totalFiltrado}</p>
+              </div>
+              <div className="bg-slate-700/40 rounded-lg p-4">
+                <p className="text-slate-400 text-sm">Em Andamento</p>
+                <p className="text-yellow-400 text-2xl font-bold">{totalEmAndamento}</p>
+              </div>
+              <div className="bg-slate-700/40 rounded-lg p-4">
+                <p className="text-slate-400 text-sm">ConcluÃ­das</p>
+                <p className="text-green-400 text-2xl font-bold">{totalConcluidas}</p>
+              </div>
+              <div className="bg-slate-700/40 rounded-lg p-4">
+                <p className="text-slate-400 text-sm">Atrasadas</p>
+                <p className="text-red-400 text-2xl font-bold">{prazos.foraDoPrazo}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Cards de Resumo de Prazos */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -156,7 +610,7 @@ export default function Relatorios() {
         </div>
 
         {/* Gráficos */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Gráfico de Pizza - Prazos */}
           <Card className="bg-slate-800/50 border-slate-700">
             <CardHeader>
@@ -213,7 +667,7 @@ export default function Relatorios() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {ordens.length > 0 ? (
+              {ordensFiltradas.length > 0 ? (
                 <ResponsiveContainer width="100%" height={300}>
                   <BarChart data={dadosAtividades}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#475569" />
@@ -244,7 +698,50 @@ export default function Relatorios() {
                 <div className="h-[300px] flex items-center justify-center text-slate-500">
                   <div className="text-center">
                     <FileBarChart className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                    <p>Nenhuma O.S. cadastrada</p>
+                    <p>Nenhuma O.S. encontrada</p>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* GrÃ¡fico de Barras - Por MÃªs */}
+          <Card className="bg-slate-800/50 border-slate-700">
+            <CardHeader>
+              <CardTitle className="text-white flex items-center gap-2">
+                <Calendar className="w-5 h-5 text-blue-400" />
+                O.S. por MÃªs ({filtroAno})
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {ordensFiltradas.length > 0 ? (
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={dadosMensais}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#475569" />
+                    <XAxis 
+                      dataKey="mes" 
+                      stroke="#94a3b8" 
+                      tick={{ fontSize: 11 }}
+                      angle={-20}
+                      textAnchor="end"
+                      height={60}
+                    />
+                    <YAxis stroke="#94a3b8" />
+                    <Tooltip 
+                      contentStyle={{ 
+                        backgroundColor: '#1e293b', 
+                        border: '1px solid #475569',
+                        borderRadius: '8px'
+                      }}
+                    />
+                    <Bar dataKey="quantidade" fill="#60A5FA" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-[300px] flex items-center justify-center text-slate-500">
+                  <div className="text-center">
+                    <FileBarChart className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                    <p>Nenhuma O.S. para o perÃ­odo</p>
                   </div>
                 </div>
               )}
@@ -260,7 +757,7 @@ export default function Relatorios() {
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               {ATIVIDADES_PRINCIPAIS.map(atividade => {
-                const osAtividade = ordens.filter(os => os.atividadePrincipal === atividade);
+                const osAtividade = ordensFiltradas.filter(os => os.atividadePrincipal === atividade);
                 const concluidas = osAtividade.filter(os => os.status === 'concluido').length;
                 const emAndamento = osAtividade.length - concluidas;
                 
@@ -291,6 +788,65 @@ export default function Relatorios() {
                   </div>
                 );
               })}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Lista Filtrada */}
+        <Card className="bg-slate-800/50 border-slate-700">
+          <CardHeader>
+            <CardTitle className="text-white">Lista de O.S. Filtradas</CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-slate-700 hover:bg-transparent">
+                    <TableHead className="text-slate-400">NÃºmero</TableHead>
+                    <TableHead className="text-slate-400">Cliente</TableHead>
+                    <TableHead className="text-slate-400">Atividade</TableHead>
+                    <TableHead className="text-slate-400">Prioridade</TableHead>
+                    <TableHead className="text-slate-400">Status</TableHead>
+                    <TableHead className="text-slate-400">Entrada</TableHead>
+                    <TableHead className="text-slate-400">PrevisÃ£o</TableHead>
+                    <TableHead className="text-slate-400">ConclusÃ£o</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {ordensFiltradas.length > 0 ? (
+                    ordensFiltradas.map(os => (
+                      <TableRow key={os.id} className="border-slate-700">
+                        <TableCell className="font-mono text-blue-400 font-semibold">{os.numero}</TableCell>
+                        <TableCell className="text-white">{os.cliente}</TableCell>
+                        <TableCell className="text-slate-300">
+                          {ATIVIDADE_LABELS[os.atividadePrincipal]}
+                        </TableCell>
+                        <TableCell>
+                          <Badge className="bg-slate-700 text-slate-200">
+                            {PRIORIDADE_LABELS[os.prioridade]}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge className="bg-slate-700 text-slate-200">
+                            {STATUS_LABELS[os.status]}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-slate-300">{formatarData(os.dataEntrada)}</TableCell>
+                        <TableCell className="text-slate-300">{formatarData(os.previsaoEntrega)}</TableCell>
+                        <TableCell className="text-slate-300">
+                          {os.status === 'concluido' ? formatarData(os.updatedAt) : '-'}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={8} className="text-center py-8 text-slate-500">
+                        Nenhuma O.S. encontrada com os filtros aplicados
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
             </div>
           </CardContent>
         </Card>
