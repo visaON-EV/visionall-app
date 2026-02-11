@@ -70,7 +70,7 @@ export default function OrdensServico() {
   const [statusNovo, setStatusNovo] = useState<OSStatus | null>(null);
   const [filtroStatus, setFiltroStatus] = useState<string>('todos');
   const [busca, setBusca] = useState('');
-  const [responsavelSelecionado, setResponsavelSelecionado] = useState('');
+  const [responsaveisSelecionados, setResponsaveisSelecionados] = useState<string[]>([]);
   const [materialAguardandoInput, setMaterialAguardandoInput] = useState('');
   const [dataEntregaMaterialInput, setDataEntregaMaterialInput] = useState('');
   
@@ -177,7 +177,7 @@ export default function OrdensServico() {
   const abrirModalResponsavel = (os: OrdemServico, novoStatus: OSStatus) => {
     setOsParaAtualizar(os);
     setStatusNovo(novoStatus);
-    setResponsavelSelecionado('');
+    setResponsaveisSelecionados([]);
     setMaterialAguardandoInput(novoStatus === 'aguardando_material' ? (os.materialAguardando || '') : '');
     setDataEntregaMaterialInput(novoStatus === 'aguardando_material' ? (os.dataEntregaMaterial || '') : '');
     setModalResponsavel(true);
@@ -192,6 +192,16 @@ export default function OrdensServico() {
 
   const handleMudarStatus = async (os: OrdemServico, novoStatus: OSStatus) => {
     abrirModalResponsavel(os, novoStatus);
+  };
+
+  const alternarResponsavel = (nome: string, selecionado: boolean) => {
+    setResponsaveisSelecionados((anteriores) => {
+      if (selecionado) {
+        if (anteriores.includes(nome)) return anteriores;
+        return [...anteriores, nome];
+      }
+      return anteriores.filter((responsavel) => responsavel !== nome);
+    });
   };
 
   const handleConfirmarResponsavel = async () => {
@@ -219,10 +229,10 @@ export default function OrdensServico() {
           }
         );
       } else {
-        if (!responsavelSelecionado) {
+        if (responsaveisSelecionados.length === 0) {
           toast({
             title: 'Erro',
-            description: 'Selecione um responsável para o novo status.',
+            description: 'Selecione ao menos um responsável para o novo status.',
             variant: 'destructive'
           });
           return;
@@ -232,7 +242,7 @@ export default function OrdensServico() {
           osParaAtualizar.id,
           statusNovo,
           usuario?.colaboradorId || '',
-          responsavelSelecionado
+          responsaveisSelecionados.join(', ')
         );
       }
 
@@ -244,7 +254,7 @@ export default function OrdensServico() {
       setModalResponsavel(false);
       setOsParaAtualizar(null);
       setStatusNovo(null);
-      setResponsavelSelecionado('');
+      setResponsaveisSelecionados([]);
       setMaterialAguardandoInput('');
       setDataEntregaMaterialInput('');
     } catch (error) {
@@ -639,7 +649,7 @@ export default function OrdensServico() {
         if (!aberto) {
           setOsParaAtualizar(null);
           setStatusNovo(null);
-          setResponsavelSelecionado('');
+          setResponsaveisSelecionados([]);
           setMaterialAguardandoInput('');
           setDataEntregaMaterialInput('');
         }
@@ -678,22 +688,26 @@ export default function OrdensServico() {
               </>
             ) : (
               <div className="space-y-2">
-                <Label className="text-slate-300">Responsável do setor</Label>
-                <Select 
-                  value={responsavelSelecionado} 
-                  onValueChange={setResponsavelSelecionado}
-                >
-                  <SelectTrigger className="bg-slate-700 border-slate-600 text-white">
-                    <SelectValue placeholder="Selecionar" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-slate-800 border-slate-700">
-                    {RESPONSAVEIS_SETOR.map((nome) => (
-                      <SelectItem key={nome} value={nome} className="text-white">
-                        {nome}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label className="text-slate-300">Responsáveis do setor</Label>
+                <div className="max-h-56 overflow-y-auto space-y-2 rounded-md border border-slate-600 bg-slate-700/40 p-3">
+                  {RESPONSAVEIS_SETOR.map((nome) => {
+                    const selecionado = responsaveisSelecionados.includes(nome);
+                    return (
+                      <label key={nome} className="flex items-center gap-2 text-sm text-white cursor-pointer">
+                        <Checkbox
+                          checked={selecionado}
+                          onCheckedChange={(checked) => alternarResponsavel(nome, Boolean(checked))}
+                        />
+                        <span>{nome}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+                <p className="text-xs text-slate-400">
+                  {responsaveisSelecionados.length > 0
+                    ? `${responsaveisSelecionados.length} responsável(eis) selecionado(s)`
+                    : 'Nenhum responsável selecionado'}
+                </p>
               </div>
             )}
             <div className="flex justify-end gap-3 pt-2">

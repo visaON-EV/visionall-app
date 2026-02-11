@@ -12,13 +12,7 @@ import {
 import { Badge } from '@/componentes/interfaces do usuario/badge';
 import { Separator } from '@/componentes/interfaces do usuario/separador';
 import { Button } from '@/componentes/interfaces do usuario/botão';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/componentes/interfaces do usuario/select';
+import { Checkbox } from '@/componentes/interfaces do usuario/checkbox';
 import { Clock, User, Calendar, Wrench, RefreshCw, CheckCircle2, Timer } from 'lucide-react';
 import { useToast } from '@/ganchos/use-toast';
 
@@ -33,7 +27,7 @@ export default function OSDetalhes({ os, aberto, onFechar }: OSDetalhesProps) {
   const { isColaborador, usuario } = useAuth();
   const { toast } = useToast();
   
-  const [colaboradorInput, setColaboradorInput] = useState('');
+  const [colaboradoresSelecionados, setColaboradoresSelecionados] = useState<string[]>([]);
   const [statusParaAtualizar, setStatusParaAtualizar] = useState<string | null>(null);
 
   const formatarData = (data: string) => {
@@ -104,31 +98,52 @@ export default function OSDetalhes({ os, aberto, onFechar }: OSDetalhesProps) {
     return tempoParcial;
   };
 
-  const handleRegistrarColaborador = async (statusIndex: number) => {
-    if (!colaboradorInput.trim()) {
-      toast({
-        title: 'Erro',
-        description: 'Selecione o nome do colaborador',
-        variant: 'destructive'
-      });
-      return;
-    }
+  const alternarColaborador = (nome: string, selecionado: boolean) => {
+    setColaboradoresSelecionados((anteriores) => {
+      if (selecionado) {
+        if (anteriores.includes(nome)) return anteriores;
+        return [...anteriores, nome];
+      }
+      return anteriores.filter((colaborador) => colaborador !== nome);
+    });
+  };
 
+  const extrairColaboradoresDoStatus = (status: string): string[] => {
+    const historicoDoStatus = historicoAtualizado.find((h) => h.statusNovo === status);
+    if (!historicoDoStatus?.colaboradorNome) return [];
+
+    return String(historicoDoStatus.colaboradorNome)
+      .split(',')
+      .map((nome) => nome.trim())
+      .filter((nome) => nome && nome.toLowerCase() !== 'sistema');
+  };
+
+  const handleRegistrarColaborador = async (statusIndex: number) => {
     const status = fluxoStatus[statusIndex];
     try {
+      const nomesSelecionadosUnicos = Array.from(
+        new Set(
+          colaboradoresSelecionados
+            .map((nome) => nome.trim())
+            .filter((nome) => nome && nome.toLowerCase() !== 'sistema')
+        )
+      );
+
       await registrarColaboradorNoStatus(
         os.id,
         status,
         usuario?.colaboradorId || '',
-        colaboradorInput.trim()
+        nomesSelecionadosUnicos.join(', ')
       );
 
       toast({
-        title: 'Colaborador registrado',
-        description: `${colaboradorInput} registrado em ${STATUS_LABELS[status]}. Tempo calculado.`
+        title: 'Colaboradores atualizados',
+        description: nomesSelecionadosUnicos.length > 0
+          ? `${nomesSelecionadosUnicos.length} colaborador(es) mantido(s) em ${STATUS_LABELS[status]}.`
+          : `Todos os colaboradores foram removidos de ${STATUS_LABELS[status]}.`
       });
 
-      setColaboradorInput('');
+      setColaboradoresSelecionados([]);
       setStatusParaAtualizar(null);
     } catch (error) {
       toast({
@@ -428,22 +443,26 @@ export default function OSDetalhes({ os, aberto, onFechar }: OSDetalhesProps) {
                       
                       {/* Input para adicionar colaborador - NÃO mostrar na etapa concluído */}
                       {isColaborador && isAtual && !isConcluido && statusParaAtualizar === status && (
-                        <div className="mt-2 flex flex-col sm:flex-row gap-2">
-                          <Select
-                            value={colaboradorInput}
-                            onValueChange={setColaboradorInput}
-                          >
-                            <SelectTrigger className="bg-slate-700 border-slate-600 text-white text-sm">
-                              <SelectValue placeholder="Selecionar colaborador" />
-                            </SelectTrigger>
-                            <SelectContent className="bg-slate-800 border-slate-700">
-                              {RESPONSAVEIS_SETOR.map((nome) => (
-                                <SelectItem key={nome} value={nome} className="text-white">
-                                  {nome}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                        <div className="mt-2 flex flex-col gap-2">
+                          <div className="max-h-44 overflow-y-auto space-y-2 rounded-md border border-slate-600 bg-slate-700/40 p-3">
+                            {RESPONSAVEIS_SETOR.map((nome) => {
+                              const selecionado = colaboradoresSelecionados.includes(nome);
+                              return (
+                                <label key={nome} className="flex items-center gap-2 text-sm text-white cursor-pointer">
+                                  <Checkbox
+                                    checked={selecionado}
+                                    onCheckedChange={(checked) => alternarColaborador(nome, Boolean(checked))}
+                                  />
+                                  <span>{nome}</span>
+                                </label>
+                              );
+                            })}
+                          </div>
+                          <p className="text-xs text-slate-400">
+                            {colaboradoresSelecionados.length > 0
+                              ? `${colaboradoresSelecionados.length} colaborador(es) selecionado(s)`
+                              : 'Nenhum colaborador selecionado'}
+                          </p>
                           <div className="flex gap-2">
                             <Button 
                               size="sm" 
@@ -455,7 +474,10 @@ export default function OSDetalhes({ os, aberto, onFechar }: OSDetalhesProps) {
                             <Button 
                               size="sm" 
                               variant="ghost"
-                              onClick={() => setStatusParaAtualizar(null)}
+                              onClick={() => {
+                                setStatusParaAtualizar(null);
+                                setColaboradoresSelecionados([]);
+                              }}
                             >
                               Cancelar
                             </Button>
@@ -469,7 +491,10 @@ export default function OSDetalhes({ os, aberto, onFechar }: OSDetalhesProps) {
                           size="sm" 
                           variant="ghost"
                           className="mt-1 text-xs text-slate-400 hover:text-white"
-                          onClick={() => setStatusParaAtualizar(status)}
+                          onClick={() => {
+                            setStatusParaAtualizar(status);
+                            setColaboradoresSelecionados(extrairColaboradoresDoStatus(status));
+                          }}
                         >
                           + Adicionar colaborador
                         </Button>
