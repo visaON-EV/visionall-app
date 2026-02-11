@@ -494,8 +494,12 @@ export default function Dashboard() {
                 <div 
                   key={os.id} 
                   className={`rounded-lg p-4 border ${
-                    tipo === 'urgente' 
-                      ? 'bg-red-500/10 border-red-500/30' 
+                    diasRestantes < 0
+                      ? 'bg-red-500/10 border-red-500/30'
+                      : diasRestantes === 0
+                        ? 'bg-orange-500/10 border-orange-500/30'
+                        : tipo === 'urgente' 
+                          ? 'bg-red-500/10 border-red-500/30' 
                       : tipo === 'atencao' 
                         ? 'bg-amber-500/10 border-amber-500/30' 
                         : 'bg-blue-500/10 border-blue-500/30'
@@ -514,18 +518,24 @@ export default function Dashboard() {
                     <Badge 
                       variant="outline" 
                       className={`${
-                        tipo === 'urgente' 
-                          ? 'border-red-500 text-red-400' 
+                        diasRestantes < 0
+                          ? 'border-red-500 text-red-400'
+                          : diasRestantes === 0
+                            ? 'border-orange-500 text-orange-400'
+                            : tipo === 'urgente' 
+                              ? 'border-red-500 text-red-400' 
                           : tipo === 'atencao' 
                             ? 'border-amber-500 text-amber-400' 
                             : 'border-blue-500 text-blue-400'
                       }`}
                     >
-                      {diasRestantes <= 0 
+                      {diasRestantes < 0 
                         ? '🚨 VENCIDO' 
-                        : diasRestantes === 1 
-                          ? '⚠️ Vence amanhã' 
-                          : `📅 ${diasRestantes} dias restantes`}
+                        : diasRestantes === 0
+                          ? '🔴 Vence hoje'
+                          : diasRestantes === 1 
+                            ? '⚠️ Vence amanhã' 
+                            : `📅 ${diasRestantes} dias restantes`}
                     </Badge>
                   </div>
                   
@@ -537,7 +547,15 @@ export default function Dashboard() {
                     <div>
                       <p className="text-slate-400">Previsão de Entrega</p>
                       <p className={`${
-                        tipo === 'urgente' ? 'text-red-400' : tipo === 'atencao' ? 'text-amber-400' : 'text-white'
+                        diasRestantes < 0
+                          ? 'text-red-400'
+                          : diasRestantes === 0
+                            ? 'text-orange-400'
+                            : tipo === 'urgente'
+                              ? 'text-red-400'
+                              : tipo === 'atencao'
+                                ? 'text-amber-400'
+                                : 'text-white'
                       }`}>
                         {new Date(os.previsaoEntrega).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}
                       </p>
