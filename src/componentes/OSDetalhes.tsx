@@ -153,6 +153,9 @@ export default function OSDetalhes({ os, aberto, onFechar }: OSDetalhesProps) {
               <Badge className={`${PRIORIDADE_COLORS[os.prioridade] || 'bg-gray-500'} text-white`}>
                 {PRIORIDADE_LABELS[os.prioridade] || 'Normal'}
               </Badge>
+              {os.semPedido && (
+                <Badge className="bg-amber-600 text-white">Sem pedido</Badge>
+              )}
             </span>
           </DialogTitle>
         </DialogHeader>
@@ -266,9 +269,11 @@ export default function OSDetalhes({ os, aberto, onFechar }: OSDetalhesProps) {
                 <span className="text-sm">Data de Autorização</span>
               </div>
               <p className="text-white font-medium">
-                {os.dataAutorizacao 
-                  ? formatarDataSomente(os.dataAutorizacao)
-                  : 'Não definida'
+                {os.semPedido
+                  ? 'Sem pedido'
+                  : os.dataAutorizacao
+                    ? formatarDataSomente(os.dataAutorizacao)
+                    : 'Não definida'
                 }
               </p>
             </div>

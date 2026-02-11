@@ -72,6 +72,12 @@ function normalizarPrioridade(valor: unknown): OrdemServico['prioridade'] {
   return 'normal';
 }
 
+function normalizarBooleano(valor: unknown): boolean {
+  if (typeof valor === 'boolean') return valor;
+  const v = normalizarTexto(valor);
+  return v === 'true' || v === '1' || v === 'sim';
+}
+
 function parseDateInputToLocal(dateStr: string): Date | null {
   if (!dateStr) return null;
   if (dateStr.includes('T')) return new Date(dateStr);
@@ -122,6 +128,7 @@ export function useOrdensServico() {
           numero: String(data.numero ?? data.numeroOS ?? ''),
           cliente: String(data.cliente ?? data.clienteNome ?? ''),
           tipoMotor: String(data.tipoMotor ?? data.tipoMotorNome ?? data.motor ?? ''),
+          semPedido: normalizarBooleano(data.semPedido),
           atividadePrincipal: normalizarAtividadePrincipal(data.atividadePrincipal),
           atividadeSecundaria: data.atividadeSecundaria ?? '',
           prioridade: normalizarPrioridade(data.prioridade),
@@ -234,6 +241,7 @@ export function useOrdensServico() {
       numero: novaOS.numero,
       cliente: novaOS.cliente,
       tipoMotor: novaOS.tipoMotor,
+      semPedido: novaOS.semPedido,
       atividadePrincipal: novaOS.atividadePrincipal,
       atividadeSecundaria: novaOS.atividadeSecundaria,
       prioridade: novaOS.prioridade,
@@ -402,6 +410,7 @@ export function useOrdensServico() {
       ...(dados.numero !== undefined ? { numero: String(dados.numero) } : {}),
       ...(dados.cliente !== undefined ? { cliente: String(dados.cliente) } : {}),
       ...(dados.tipoMotor !== undefined ? { tipoMotor: String(dados.tipoMotor) } : {}),
+      ...(dados.semPedido !== undefined ? { semPedido: Boolean(dados.semPedido) } : {}),
       ...(dados.atividadePrincipal !== undefined ? { atividadePrincipal: dados.atividadePrincipal } : {}),
       ...(dados.atividadeSecundaria !== undefined ? { atividadeSecundaria: dados.atividadeSecundaria } : {}),
       ...(dados.prioridade !== undefined ? { prioridade: dados.prioridade } : {}),
