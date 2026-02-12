@@ -55,6 +55,7 @@ export default function Dashboard() {
   const [modalTotal, setModalTotal] = useState(false);
   const [modalEmAndamento, setModalEmAndamento] = useState(false);
   const [modalConcluidas, setModalConcluidas] = useState(false);
+  const [modalSemPedido, setModalSemPedido] = useState(false);
   const [modalAguardando, setModalAguardando] = useState(false);
   const [modalAguardandoExecucao, setModalAguardandoExecucao] = useState(false);
   const [modalTempoTotal, setModalTempoTotal] = useState(false);
@@ -96,6 +97,7 @@ export default function Dashboard() {
     os.status !== 'aguardando_execucao'
   ));
   const osConcluidasList = ordens.filter(os => os.status === 'concluido');
+  const osSemPedidoList = ordens.filter(os => os.semPedido);
   const osAguardandoList = ordens.filter(os => os.status === 'aguardando_material');
   const osAguardandoExecucaoList = ordens.filter(os => os.status === 'aguardando_execucao');
 
@@ -145,7 +147,10 @@ export default function Dashboard() {
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-br from-amber-500 to-yellow-600 border-0">
+          <Card
+            className="bg-gradient-to-br from-amber-500 to-yellow-600 border-0 cursor-pointer hover:from-amber-600 hover:to-yellow-700 transition-all"
+            onClick={() => setModalSemPedido(true)}
+          >
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -672,6 +677,54 @@ export default function Dashboard() {
             <div className="text-center py-8 text-slate-500">
               <Clock className="w-12 h-12 mx-auto mb-3 opacity-50" />
               <p>Nenhuma O.S. em andamento no momento</p>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Sem Pedido */}
+      <Dialog open={modalSemPedido} onOpenChange={setModalSemPedido}>
+        <DialogContent className="bg-slate-800 border-slate-700 max-w-3xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-white flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-amber-400" />
+              Ordens de Servico Sem Pedido ({osSemPedidoList.length})
+            </DialogTitle>
+          </DialogHeader>
+
+          {osSemPedidoList.length > 0 ? (
+            <div className="space-y-4">
+              {osSemPedidoList.map(os => (
+                <div key={os.id} className="bg-slate-700/50 rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-blue-400 font-semibold">{os.numero}</span>
+                        {renderSemPedidoBadge(os)}
+                      </div>
+                      <Badge className={`${STATUS_COLORS[os.status]} text-white`}>
+                        {STATUS_LABELS[os.status]}
+                      </Badge>
+                    </div>
+                    <span className="text-sm text-slate-400">{os.cliente}</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <p className="text-slate-400">Tipo de Motor</p>
+                      <p className="text-white">{os.tipoMotor}</p>
+                    </div>
+                    <div>
+                      <p className="text-slate-400">Atividade</p>
+                      <p className="text-white">{ATIVIDADE_LABELS[os.atividadePrincipal]}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-slate-500">
+              <AlertTriangle className="w-12 h-12 mx-auto mb-3 opacity-50" />
+              <p>Nenhuma O.S. sem pedido</p>
             </div>
           )}
         </DialogContent>
