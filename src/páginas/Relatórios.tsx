@@ -71,7 +71,7 @@ const CORES_ATIVIDADES = {
 const MESES = [
   { value: 1, label: 'Janeiro' },
   { value: 2, label: 'Fevereiro' },
-  { value: 3, label: 'MarÃ§o' },
+  { value: 3, label: 'Março' },
   { value: 4, label: 'Abril' },
   { value: 5, label: 'Maio' },
   { value: 6, label: 'Junho' },
@@ -238,7 +238,7 @@ export default function Relatorios() {
 
         const historicoOS = historico.filter(h => h.osId === os.id);
         let maiorTempo = 0;
-        let setorMaiorTempo = 'NÃ£o identificado';
+        let setorMaiorTempo = 'Não identificado';
         historicoOS.forEach(h => {
           if (h.tempoNoStatus && h.tempoNoStatus > maiorTempo) {
             maiorTempo = h.tempoNoStatus;
@@ -366,11 +366,11 @@ export default function Relatorios() {
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
               <div className="space-y-2">
-                <Label className="text-slate-300">Busca rÃ¡pida</Label>
+                <Label className="text-slate-300">Busca rápida</Label>
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
                   <Input
-                    placeholder="NÃºmero, cliente ou motor"
+                    placeholder="Número, cliente ou motor"
                     value={filtroTexto}
                     onChange={(e) => setFiltroTexto(e.target.value)}
                     className="pl-10 bg-slate-700 border-slate-600 text-white"
@@ -439,15 +439,15 @@ export default function Relatorios() {
                   </SelectTrigger>
                   <SelectContent className="bg-slate-800 border-slate-700">
                     <SelectItem value="dataEntrada" className="text-white">Data de Entrada</SelectItem>
-                    <SelectItem value="dataAutorizacao" className="text-white">Data de AutorizaÃ§Ã£o</SelectItem>
-                    <SelectItem value="previsaoEntrega" className="text-white">PrevisÃ£o de Entrega</SelectItem>
-                    <SelectItem value="conclusao" className="text-white">Data de ConclusÃ£o</SelectItem>
+                    <SelectItem value="dataAutorizacao" className="text-white">Data de Autorização</SelectItem>
+                    <SelectItem value="previsaoEntrega" className="text-white">Previsão de Entrega</SelectItem>
+                    <SelectItem value="conclusao" className="text-white">Data de Conclusão</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               <div className="space-y-2">
-                <Label className="text-slate-300">PerÃ­odo</Label>
+                <Label className="text-slate-300">Período</Label>
                 <Select value={filtroPeriodo} onValueChange={(value) => setFiltroPeriodo(value as typeof filtroPeriodo)}>
                   <SelectTrigger className="bg-slate-700 border-slate-600 text-white">
                     <Calendar className="w-4 h-4 mr-2" />
@@ -455,10 +455,10 @@ export default function Relatorios() {
                   </SelectTrigger>
                   <SelectContent className="bg-slate-800 border-slate-700">
                     <SelectItem value="todos" className="text-white">Todos</SelectItem>
-                    <SelectItem value="mes_atual" className="text-white">MÃªs Atual</SelectItem>
+                    <SelectItem value="mes_atual" className="text-white">Mês Atual</SelectItem>
                     <SelectItem value="ano_atual" className="text-white">Ano Atual</SelectItem>
-                    <SelectItem value="mes_especifico" className="text-white">MÃªs EspecÃ­fico</SelectItem>
-                    <SelectItem value="ano_especifico" className="text-white">Ano EspecÃ­fico</SelectItem>
+                    <SelectItem value="mes_especifico" className="text-white">Mês Específico</SelectItem>
+                    <SelectItem value="ano_especifico" className="text-white">Ano Específico</SelectItem>
                     <SelectItem value="intervalo" className="text-white">Intervalo Personalizado</SelectItem>
                   </SelectContent>
                 </Select>
@@ -487,7 +487,7 @@ export default function Relatorios() {
 
                 {filtroPeriodo === 'mes_especifico' && (
                   <div className="space-y-2">
-                    <Label className="text-slate-300">MÃªs</Label>
+                    <Label className="text-slate-300">Mês</Label>
                     <Select value={String(filtroMes)} onValueChange={(value) => setFiltroMes(Number(value))}>
                       <SelectTrigger className="bg-slate-700 border-slate-600 text-white">
                         <SelectValue />
@@ -549,7 +549,7 @@ export default function Relatorios() {
                 <p className="text-yellow-400 text-2xl font-bold">{totalEmAndamento}</p>
               </div>
               <div className="bg-slate-700/40 rounded-lg p-4">
-                <p className="text-slate-400 text-sm">ConcluÃ­das</p>
+                <p className="text-slate-400 text-sm">Concluídas</p>
                 <p className="text-green-400 text-2xl font-bold">{totalConcluidas}</p>
               </div>
               <div className="bg-slate-700/40 rounded-lg p-4">
@@ -705,12 +705,12 @@ export default function Relatorios() {
             </CardContent>
           </Card>
 
-          {/* GrÃ¡fico de Barras - Por MÃªs */}
+          {/* Gráfico de Barras - Por Mês */}
           <Card className="bg-slate-800/50 border-slate-700">
             <CardHeader>
               <CardTitle className="text-white flex items-center gap-2">
                 <Calendar className="w-5 h-5 text-blue-400" />
-                O.S. por MÃªs ({filtroAno})
+                O.S. por Mês ({filtroAno})
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -741,7 +741,7 @@ export default function Relatorios() {
                 <div className="h-[300px] flex items-center justify-center text-slate-500">
                   <div className="text-center">
                     <FileBarChart className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                    <p>Nenhuma O.S. para o perÃ­odo</p>
+                    <p>Nenhuma O.S. para o período</p>
                   </div>
                 </div>
               )}
@@ -802,14 +802,14 @@ export default function Relatorios() {
               <Table>
                 <TableHeader>
                   <TableRow className="border-slate-700 hover:bg-transparent">
-                    <TableHead className="text-slate-400">NÃºmero</TableHead>
+                    <TableHead className="text-slate-400">Número</TableHead>
                     <TableHead className="text-slate-400">Cliente</TableHead>
                     <TableHead className="text-slate-400">Atividade</TableHead>
                     <TableHead className="text-slate-400">Prioridade</TableHead>
                     <TableHead className="text-slate-400">Status</TableHead>
                     <TableHead className="text-slate-400">Entrada</TableHead>
-                    <TableHead className="text-slate-400">PrevisÃ£o</TableHead>
-                    <TableHead className="text-slate-400">ConclusÃ£o</TableHead>
+                    <TableHead className="text-slate-400">Previsão</TableHead>
+                    <TableHead className="text-slate-400">Conclusão</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
