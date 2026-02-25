@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import Layout from '@/componentes/Layout';
 import { useOrdensServico } from '@/ganchos/useOrdensServico';
 import { 
@@ -100,14 +100,14 @@ export default function Relatorios() {
   const [dataInicio, setDataInicio] = useState('');
   const [dataFim, setDataFim] = useState('');
 
-  const parseData = (valor?: string) => {
+  const parseData = useCallback((valor?: string) => {
     if (!valor) return null;
     const data = new Date(valor);
     if (Number.isNaN(data.getTime())) return null;
     return data;
-  };
+  }, []);
 
-  const obterDataBaseOS = (os: typeof ordens[number]) => {
+  const obterDataBaseOS = useCallback((os: typeof ordens[number]) => {
     if (campoData === 'dataEntrada') return parseData(os.dataEntrada || os.createdAt);
     if (campoData === 'dataAutorizacao') return parseData(os.dataAutorizacao);
     if (campoData === 'previsaoEntrega') return parseData(os.previsaoEntrega);
@@ -116,7 +116,7 @@ export default function Relatorios() {
       return parseData(os.updatedAt);
     }
     return null;
-  };
+  }, [campoData, parseData]);
 
   const anosDisponiveis = useMemo(() => {
     const anos = new Set<number>();
@@ -126,7 +126,7 @@ export default function Relatorios() {
     });
     if (anos.size === 0) anos.add(new Date().getFullYear());
     return Array.from(anos).sort((a, b) => b - a);
-  }, [ordens]);
+  }, [ordens, parseData]);
 
   useEffect(() => {
     if (!anosDisponiveis.includes(filtroAno)) {
@@ -192,7 +192,7 @@ export default function Relatorios() {
 
       return true;
     });
-  }, [ordens, filtroTexto, filtroStatus, filtroAtividade, filtroPrioridade, filtroPeriodo, intervaloPeriodo, campoData]);
+  }, [ordens, filtroTexto, filtroStatus, filtroAtividade, filtroPrioridade, filtroPeriodo, intervaloPeriodo, obterDataBaseOS]);
 
   const contagemAtividade = useMemo(() => {
     const contagem: Record<AtividadePrincipal, number> = {
@@ -314,7 +314,7 @@ export default function Relatorios() {
       base[data.getMonth()].quantidade += 1;
     });
     return base;
-  }, [ordensFiltradas, filtroAno, campoData]);
+  }, [ordensFiltradas, filtroAno, obterDataBaseOS]);
 
   // Calcular porcentagem no prazo
   const porcentagemNoPrazo = prazos.total > 0 
