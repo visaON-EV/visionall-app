@@ -48,6 +48,12 @@ export default defineConfig(({ mode }) => ({
       },
       workbox: {
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
+        navigateFallback: "/index.html",
+        // Evita fallback do SPA para chamadas de API/arquivos reais
+        navigateFallbackDenylist: [
+          /^\/api\//,
+          /\/[^/?]+\.[^/]+$/
+        ],
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,

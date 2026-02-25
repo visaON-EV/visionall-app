@@ -15,6 +15,7 @@ import { Usuario, Colaborador } from '@/tipos';
 interface AuthContextType {
   usuario: Usuario | null;
   isAuthenticated: boolean;
+  loading: boolean;
   isColaborador: boolean;
   colaboradores: Colaborador[];
   login: (email: string, senha: string) => Promise<boolean>;
@@ -94,6 +95,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       value={{
         usuario,
         isAuthenticated: !!usuario,
+        loading,
         isColaborador: usuario?.tipo === 'colaborador',
         colaboradores,
         login,
