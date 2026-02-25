@@ -302,23 +302,53 @@ export function useOrdensServico() {
   }, [ordens, historico]);
 
   // Registrar colaborador no status atual (sem mudar de status)
-  const registrarColaboradorNoStatus = useCallback((
+  const registrarColaboradorNoStatus = useCallback(async (
     osId: string, 
     status: OSStatus,
     colaboradorId: string, 
     colaboradorNome: string
   ) => {
+    // Buscar registro existente do status atual
+    const registroExistente = historico
+      .filter(h => h.osId === osId && h.statusNovo === status)
+      .sort((a, b) => new Date(b.dataHora).getTime() - new Date(a.dataHora).getTime())[0];
+    
+    // Se já existe registro, calcular tempo desde o início do status até agora
+    let tempoNoStatus = null;
+    if (registroExistente) {
+      const inicio = new Date(registroExistente.dataHora);
+      const fim = new Date();
+      tempoNoStatus = calcularTempoUtil(inicio, fim);
+    } else {
+      // Se não existe, buscar quando a OS entrou neste status
+      const os = ordens.find(o => o.id === osId);
+      if (os && os.status === status) {
+        // Buscar quando mudou para este status
+        const mudancaStatus = historico
+          .filter(h => h.osId === osId && h.statusNovo === status)
+          .sort((a, b) => new Date(a.dataHora).getTime() - new Date(b.dataHora).getTime())[0];
+        
+        if (mudancaStatus) {
+          const inicio = new Date(mudancaStatus.dataHora);
+          const fim = new Date();
+          tempoNoStatus = calcularTempoUtil(inicio, fim);
+        }
+      }
+    }
+    
     // Persiste por OS+status, para o nome permanecer na timeline
     const historicoId = `${osId}_${status}`;
-    return setDoc(doc(db, 'historico_status', historicoId), {
+    await setDoc(doc(db, 'historico_status', historicoId), {
       osId,
       statusNovo: status,
       colaboradorId,
       colaboradorNome,
-      // mantém/define a data do registro; se já existia, não sobrescreve tempo
-      dataHora: serverTimestamp()
-    }, { merge: true }).then(() => true);
-  }, []);
+      dataHora: registroExistente ? registroExistente.dataHora : serverTimestamp(),
+      tempoNoStatus: tempoNoStatus
+    }, { merge: true });
+    
+    return true;
+  }, [ordens, historico]);
 
   // Editar OS
   const editarOS = useCallback(async (id: string, dados: Partial<OrdemServico>) => {
@@ -413,23 +443,26 @@ export function useOrdensServico() {
   // Calcular tempo parcial de uma OS específica (soma de todos os tempos nos setores)
   const calcularTempoParcialOS = useCallback((osId: string): number => {
     const historicoOS = historico.filter(h => h.osId === osId);
+    const os = ordens.find(o => o.id === osId);
     let tempoParcial = 0;
     
+    // Soma todos os tempos já salvos nos setores concluídos (status diferentes do atual)
     historicoOS.forEach(h => {
-      if (h.tempoNoStatus) {
+      if (h.tempoNoStatus && h.statusNovo !== os?.status) {
         tempoParcial += h.tempoNoStatus;
       }
     });
     
-    // Se ainda está em andamento, adicionar tempo desde último registro
-    const os = ordens.find(o => o.id === osId);
+    // Se ainda está em andamento, calcular tempo do status atual desde o início
     if (os && os.status !== 'concluido') {
-      const ultimoRegistro = historicoOS.sort((a, b) => 
-        new Date(b.dataHora).getTime() - new Date(a.dataHora).getTime()
-      )[0];
+      const registroStatusAtual = historicoOS
+        .filter(h => h.statusNovo === os.status)
+        .sort((a, b) => new Date(a.dataHora).getTime() - new Date(b.dataHora).getTime())[0];
       
-      if (ultimoRegistro) {
-        tempoParcial += calcularTempoUtil(new Date(ultimoRegistro.dataHora), new Date());
+      if (registroStatusAtual) {
+        const inicio = new Date(registroStatusAtual.dataHora);
+        const fim = new Date();
+        tempoParcial += calcularTempoUtil(inicio, fim);
       }
     }
     

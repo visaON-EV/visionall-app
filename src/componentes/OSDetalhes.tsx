@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { OrdemServico, STATUS_LABELS, STATUS_COLORS, ATIVIDADE_LABELS, PRIORIDADE_LABELS, PRIORIDADE_COLORS, STATUS_POR_ATIVIDADE } from '@/tipos';
 import { useOrdensServico } from '@/ganchos/useOrdensServico';
 import { useAuth } from '@/contextos/AuthContext';
-import { formatarTempoUtil } from '@/utilitários/calcularTempoUtil';
+import { formatarTempoUtil, calcularTempoUtil } from '@/utilitários/calcularTempoUtil';
 import {
   Dialog,
   DialogContent,
@@ -68,8 +68,17 @@ export default function OSDetalhes({ os, aberto, onFechar }: OSDetalhesProps) {
     for (let i = 0; i <= etapaIndex; i++) {
       const status = fluxoStatus[i];
       const h = historicoAtualizado.find(hist => hist.statusNovo === status);
-      if (h?.tempoNoStatus) {
-        tempoParcial += h.tempoNoStatus;
+      
+      if (h) {
+        // Se tem tempo salvo, usa ele
+        if (h.tempoNoStatus) {
+          tempoParcial += h.tempoNoStatus;
+        } else if (i === etapaIndex && os.status === status && os.status !== 'concluido') {
+          // Se é o status atual e ainda não foi concluído, calcular tempo desde o início do status
+          const inicio = new Date(h.dataHora);
+          const fim = new Date();
+          tempoParcial += calcularTempoUtil(inicio, fim);
+        }
       }
     }
     
@@ -292,6 +301,15 @@ export default function OSDetalhes({ os, aberto, onFechar }: OSDetalhesProps) {
                 const isConcluido = status === 'concluido';
                 const tempoParcialAteAqui = calcularTempoParcialAteEtapa(index);
                 
+                // Calcular tempo do setor (salvo ou em tempo real se está em andamento)
+                let tempoSetor = historicoDoStatus?.tempoNoStatus;
+                if (isAtual && !isConcluido && historicoDoStatus) {
+                  // Se está em andamento, calcular tempo desde o início do status
+                  const inicio = new Date(historicoDoStatus.dataHora);
+                  const fim = new Date();
+                  tempoSetor = calcularTempoUtil(inicio, fim);
+                }
+                
                 return (
                   <div 
                     key={status}
@@ -319,9 +337,9 @@ export default function OSDetalhes({ os, aberto, onFechar }: OSDetalhesProps) {
                         <Badge className={`${STATUS_COLORS[status]} text-white`}>
                           {STATUS_LABELS[status]}
                         </Badge>
-                        {historicoDoStatus?.tempoNoStatus && (
+                        {tempoSetor && tempoSetor > 0 && (
                           <span className="text-xs text-cyan-400 bg-cyan-500/20 px-2 py-0.5 rounded">
-                            Setor: {formatarTempoUtil(historicoDoStatus.tempoNoStatus)}
+                            Setor: {formatarTempoUtil(tempoSetor)}
                           </span>
                         )}
                         {(isPassado || isAtual) && tempoParcialAteAqui > 0 && (
