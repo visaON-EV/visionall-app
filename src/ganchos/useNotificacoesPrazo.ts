@@ -1,12 +1,27 @@
-import { useEffect, useRef, useCallback, useState } from 'react';
+﻿import { useEffect, useRef, useCallback, useState } from 'react';
 import { OrdemServico } from '@/tipos';
 import { toast } from 'sonner';
-import { AlertTriangle, Clock } from 'lucide-react';
 
 interface OSProximaDoPrazo {
   os: OrdemServico;
   diasRestantes: number;
   tipo: 'urgente' | 'atencao' | 'proximo';
+}
+
+function parseDateOnlyLocal(valor: string): Date | null {
+  if (!valor) return null;
+
+  const apenasData = valor.includes('T') ? valor.slice(0, 10) : valor;
+  const partes = apenasData.split('-').map(Number);
+
+  if (partes.length !== 3 || partes.some((p) => Number.isNaN(p))) {
+    const fallback = new Date(valor);
+    if (Number.isNaN(fallback.getTime())) return null;
+    return new Date(fallback.getFullYear(), fallback.getMonth(), fallback.getDate());
+  }
+
+  const [ano, mes, dia] = partes;
+  return new Date(ano, mes - 1, dia);
 }
 
 export function useNotificacoesPrazo(ordens: OrdemServico[]) {
@@ -17,75 +32,75 @@ export function useNotificacoesPrazo(ordens: OrdemServico[]) {
     const hoje = new Date();
     hoje.setHours(0, 0, 0, 0);
 
-    const osEmAndamento = ordens.filter(os => 
-      os.status !== 'concluido' && 
-      os.previsaoEntrega
-    );
+    const osEmAndamento = ordens.filter((os) => os.status !== 'concluido' && os.previsaoEntrega);
 
     const proximas: OSProximaDoPrazo[] = [];
 
-    osEmAndamento.forEach(os => {
-      const previsao = new Date(os.previsaoEntrega);
-      previsao.setHours(23, 59, 59, 999);
-      
+    osEmAndamento.forEach((os) => {
+      const previsao = parseDateOnlyLocal(os.previsaoEntrega);
+      if (!previsao) return;
+
       const diffTime = previsao.getTime() - hoje.getTime();
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      
-      // Verificar se já foi notificado na sessão atual
-      const notificationKey = `${os.id}-${diffDays <= 0 ? 'vencido' : diffDays <= 1 ? 'urgente' : diffDays <= 3 ? 'atencao' : 'proximo'}`;
-      
-      if (diffDays <= 0) {
-        // Prazo vencido ou vencendo hoje
+      const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+
+      // Regra: atraso apenas depois do dia de entrega.
+      const notificationKey = `${os.id}-${diffDays < 0 ? 'vencido' : diffDays <= 1 ? 'urgente' : diffDays <= 3 ? 'atencao' : 'proximo'}`;
+
+      if (diffDays < 0) {
         proximas.push({ os, diasRestantes: diffDays, tipo: 'urgente' });
-        
+
         if (!notificacoesExibidasRef.current.has(notificationKey)) {
-          toast.error(`⚠️ PRAZO VENCIDO: O.S. ${os.numero}`, {
-            description: `Cliente: ${os.cliente} - Previsão era ${new Date(os.previsaoEntrega).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}`,
+          toast.error(`PRAZO VENCIDO: O.S. ${os.numero}`, {
+            description: `Cliente: ${os.cliente} - Previsao era ${new Date(os.previsaoEntrega).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}`,
             duration: 10000,
           });
           notificacoesExibidasRef.current.add(notificationKey);
         }
-      } else if (diffDays === 1) {
-        // Vence amanhã
+      } else if (diffDays === 0) {
         proximas.push({ os, diasRestantes: diffDays, tipo: 'urgente' });
-        
+
         if (!notificacoesExibidasRef.current.has(notificationKey)) {
-          toast.warning(`🔴 VENCE AMANHÃ: O.S. ${os.numero}`, {
+          toast.warning(`VENCE HOJE: O.S. ${os.numero}`, {
+            description: `Cliente: ${os.cliente}`,
+            duration: 8000,
+          });
+          notificacoesExibidasRef.current.add(notificationKey);
+        }
+      } else if (diffDays === 1) {
+        proximas.push({ os, diasRestantes: diffDays, tipo: 'urgente' });
+
+        if (!notificacoesExibidasRef.current.has(notificationKey)) {
+          toast.warning(`VENCE AMANHA: O.S. ${os.numero}`, {
             description: `Cliente: ${os.cliente}`,
             duration: 8000,
           });
           notificacoesExibidasRef.current.add(notificationKey);
         }
       } else if (diffDays <= 3) {
-        // Vence em até 3 dias
         proximas.push({ os, diasRestantes: diffDays, tipo: 'atencao' });
-        
+
         if (!notificacoesExibidasRef.current.has(notificationKey)) {
-          toast.warning(`🟡 ATENÇÃO: O.S. ${os.numero} vence em ${diffDays} dias`, {
+          toast.warning(`ATENCAO: O.S. ${os.numero} vence em ${diffDays} dias`, {
             description: `Cliente: ${os.cliente}`,
             duration: 6000,
           });
           notificacoesExibidasRef.current.add(notificationKey);
         }
       } else if (diffDays <= 5) {
-        // Vence em até 5 dias (apenas lista, sem toast)
         proximas.push({ os, diasRestantes: diffDays, tipo: 'proximo' });
       }
     });
 
-    // Ordenar por dias restantes (mais urgentes primeiro)
     proximas.sort((a, b) => a.diasRestantes - b.diasRestantes);
     setOsProximasDoPrazo(proximas);
 
     return proximas;
   }, [ordens]);
 
-  // Verificar ao montar e quando ordens mudam
   useEffect(() => {
     verificarPrazos();
   }, [verificarPrazos]);
 
-  // Verificar periodicamente (a cada 5 minutos)
   useEffect(() => {
     const interval = setInterval(() => {
       verificarPrazos();
@@ -98,7 +113,7 @@ export function useNotificacoesPrazo(ordens: OrdemServico[]) {
     osProximasDoPrazo,
     verificarPrazos,
     totalAlertas: osProximasDoPrazo.length,
-    alertasUrgentes: osProximasDoPrazo.filter(o => o.tipo === 'urgente').length,
-    alertasAtencao: osProximasDoPrazo.filter(o => o.tipo === 'atencao').length,
+    alertasUrgentes: osProximasDoPrazo.filter((o) => o.tipo === 'urgente').length,
+    alertasAtencao: osProximasDoPrazo.filter((o) => o.tipo === 'atencao').length,
   };
 }
