@@ -234,7 +234,7 @@ export const RESPONSAVEIS_SETOR = [
   'Leandro',
   'Mônica',
   'Gabriel Leite',
-  'Emanoel',
+  'Manoel',
   'Rafael',
   'Edmilson',
   'Stênio',
