@@ -6,6 +6,9 @@ import {
   onSnapshot,
   query,
   orderBy,
+  where,
+  getDocs,
+  writeBatch,
   Timestamp,
   doc,
   setDoc,
@@ -453,8 +456,38 @@ export function useOrdensServico() {
 
   // Excluir OS
   const excluirOS = useCallback(async (id: string) => {
-    const ref = doc(db, 'ordens_servico', id);
-    await deleteDoc(ref);
+    // Remove todos os registros de histórico vinculados à OS antes de excluir o documento principal.
+    const historicoQuery = query(
+      collection(db, 'historico_status'),
+      where('osId', '==', id)
+    );
+    const historicoSnapshot = await getDocs(historicoQuery);
+
+    let batch = writeBatch(db);
+    let operacoesNoBatch = 0;
+    const commits: Promise<void>[] = [];
+
+    historicoSnapshot.forEach((historicoDoc) => {
+      batch.delete(historicoDoc.ref);
+      operacoesNoBatch += 1;
+
+      // Limite do Firestore: até 500 operações por batch.
+      if (operacoesNoBatch === 500) {
+        commits.push(batch.commit());
+        batch = writeBatch(db);
+        operacoesNoBatch = 0;
+      }
+    });
+
+    if (operacoesNoBatch > 0) {
+      commits.push(batch.commit());
+    }
+
+    if (commits.length > 0) {
+      await Promise.all(commits);
+    }
+
+    await deleteDoc(doc(db, 'ordens_servico', id));
     
     const novoHistorico = historico.filter(h => h.osId !== id);
     salvarHistorico(novoHistorico);
