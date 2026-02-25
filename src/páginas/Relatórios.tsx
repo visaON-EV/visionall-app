@@ -276,20 +276,38 @@ export default function Relatorios() {
     }
   }, [modalForaDoPrazoAberto, prazos.detalhesForaDoPrazo, ordens]);
 
-  const salvarMotivo = (osId: string) => {
-    editarOS(osId, { motivoAtraso: motivosEditaveis[osId] });
-    toast({
-      title: 'Motivo salvo',
-      description: 'O motivo do atraso foi atualizado com sucesso.'
-    });
+  const salvarMotivo = async (osId: string) => {
+    try {
+      await editarOS(osId, { motivoAtraso: motivosEditaveis[osId] });
+      toast({
+        title: 'Motivo salvo',
+        description: 'O motivo do atraso foi atualizado com sucesso.'
+      });
+    } catch (error) {
+      toast({
+        title: 'Erro ao salvar motivo',
+        description: 'Nao foi possivel atualizar o motivo do atraso no Firestore.',
+        variant: 'destructive'
+      });
+      console.error(error);
+    }
   };
 
-  const salvarSetor = (osId: string) => {
-    editarOS(osId, { setorAtraso: setoresEditaveis[osId] });
-    toast({
-      title: 'Setor salvo',
-      description: 'O setor do atraso foi atualizado com sucesso.'
-    });
+  const salvarSetor = async (osId: string) => {
+    try {
+      await editarOS(osId, { setorAtraso: setoresEditaveis[osId] });
+      toast({
+        title: 'Setor salvo',
+        description: 'O setor do atraso foi atualizado com sucesso.'
+      });
+    } catch (error) {
+      toast({
+        title: 'Erro ao salvar setor',
+        description: 'Nao foi possivel atualizar o setor do atraso no Firestore.',
+        variant: 'destructive'
+      });
+      console.error(error);
+    }
   };
 
   // Dados para gráfico de pizza de prazos
