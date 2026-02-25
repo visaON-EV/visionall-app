@@ -482,7 +482,7 @@ export default function Dashboard() {
                       <p className={`${
                         tipo === 'urgente' ? 'text-red-400' : tipo === 'atencao' ? 'text-amber-400' : 'text-white'
                       }`}>
-                        {new Date(os.previsaoEntrega).toLocaleDateString('pt-BR')}
+                        {new Date(os.previsaoEntrega).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}
                       </p>
                     </div>
                     <div>

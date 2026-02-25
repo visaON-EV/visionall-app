@@ -40,7 +40,7 @@ export function useNotificacoesPrazo(ordens: OrdemServico[]) {
         
         if (!notificacoesExibidasRef.current.has(notificationKey)) {
           toast.error(`⚠️ PRAZO VENCIDO: O.S. ${os.numero}`, {
-            description: `Cliente: ${os.cliente} - Previsão era ${new Date(os.previsaoEntrega).toLocaleDateString('pt-BR')}`,
+            description: `Cliente: ${os.cliente} - Previsão era ${new Date(os.previsaoEntrega).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}`,
             duration: 10000,
           });
           notificacoesExibidasRef.current.add(notificationKey);

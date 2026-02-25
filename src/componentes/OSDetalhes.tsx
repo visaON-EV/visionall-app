@@ -47,6 +47,11 @@ export default function OSDetalhes({ os, aberto, onFechar }: OSDetalhesProps) {
     });
   };
 
+  const formatarDataSomente = (data: string) => {
+    if (!data) return '-';
+    return new Date(data).toLocaleDateString('pt-BR', { timeZone: 'UTC' });
+  };
+
   // Obter fluxo de status baseado na atividade principal
   const fluxoStatus = STATUS_POR_ATIVIDADE[os.atividadePrincipal] || STATUS_POR_ATIVIDADE.rebobinar;
   
@@ -262,7 +267,7 @@ export default function OSDetalhes({ os, aberto, onFechar }: OSDetalhesProps) {
               </div>
               <p className="text-white font-medium">
                 {os.dataAutorizacao 
-                  ? new Date(os.dataAutorizacao).toLocaleDateString('pt-BR')
+                  ? formatarDataSomente(os.dataAutorizacao)
                   : 'Não definida'
                 }
               </p>
@@ -274,7 +279,7 @@ export default function OSDetalhes({ os, aberto, onFechar }: OSDetalhesProps) {
               </div>
               <p className="text-white font-medium">
                 {os.previsaoEntrega 
-                  ? new Date(os.previsaoEntrega).toLocaleDateString('pt-BR')
+                  ? formatarDataSomente(os.previsaoEntrega)
                   : 'Não definida'
                 }
               </p>
