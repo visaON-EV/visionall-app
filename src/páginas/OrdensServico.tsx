@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useAuth } from '@/contextos/AuthContext';
 import { useOrdensServico } from '@/ganchos/useOrdensServico';
 import { 
@@ -50,7 +50,10 @@ import {
   Plus, 
   Search, 
   Edit, 
-  Filter
+  Filter,
+  ArrowUpDown,
+  ChevronUp,
+  ChevronDown
 } from 'lucide-react';
 import { useToast } from '@/ganchos/use-toast';
 import OSDetalhes from '@/componentes/OSDetalhes';
@@ -69,6 +72,12 @@ export default function OrdensServico() {
   const [statusNovo, setStatusNovo] = useState<OSStatus | null>(null);
   const [filtroStatus, setFiltroStatus] = useState<string>('todos');
   const [busca, setBusca] = useState('');
+  type CampoOrdenacao = 'numero' | 'cliente' | 'tipoMotor' | 'atividadePrincipal' | 'prioridade' | 'status';
+  type DirecaoOrdenacao = 'asc' | 'desc';
+  const [ordenacao, setOrdenacao] = useState<{ campo: CampoOrdenacao; direcao: DirecaoOrdenacao }>({
+    campo: 'numero',
+    direcao: 'asc'
+  });
   const [responsaveisSelecionados, setResponsaveisSelecionados] = useState<string[]>([]);
   const [materialAguardandoInput, setMaterialAguardandoInput] = useState('');
   const [dataEntregaMaterialInput, setDataEntregaMaterialInput] = useState('');
@@ -279,14 +288,58 @@ export default function OrdensServico() {
     }
   };
 
-  const ordensFiltradas = ordens.filter(os => {
-    const matchStatus = filtroStatus === 'todos' || os.status === filtroStatus;
-    const matchBusca = busca === '' || 
-      os.numero.toLowerCase().includes(busca.toLowerCase()) ||
-      os.cliente.toLowerCase().includes(busca.toLowerCase()) ||
-      os.tipoMotor.toLowerCase().includes(busca.toLowerCase());
-    return matchStatus && matchBusca;
-  });
+  const alternarOrdenacao = (campo: CampoOrdenacao) => {
+    setOrdenacao((atual) => {
+      if (atual.campo === campo) {
+        return { campo, direcao: atual.direcao === 'asc' ? 'desc' : 'asc' };
+      }
+      return { campo, direcao: 'asc' };
+    });
+  };
+
+  const obterValorOrdenacao = (os: OrdemServico, campo: CampoOrdenacao) => {
+    switch (campo) {
+      case 'numero':
+        return os.numero || '';
+      case 'cliente':
+        return os.cliente || '';
+      case 'tipoMotor':
+        return os.tipoMotor || '';
+      case 'atividadePrincipal':
+        return ATIVIDADE_LABELS[os.atividadePrincipal] || os.atividadePrincipal || '';
+      case 'prioridade':
+        return PRIORIDADE_LABELS[os.prioridade] || os.prioridade || '';
+      case 'status':
+        return STATUS_LABELS[os.status] || os.status || '';
+      default:
+        return '';
+    }
+  };
+
+  const ordensFiltradas = useMemo(() => {
+    const buscaNormalizada = busca.toLowerCase();
+
+    const filtradas = ordens.filter((os) => {
+      const matchStatus = filtroStatus === 'todos' || os.status === filtroStatus;
+      const matchBusca =
+        busca === '' ||
+        os.numero.toLowerCase().includes(buscaNormalizada) ||
+        os.cliente.toLowerCase().includes(buscaNormalizada) ||
+        os.tipoMotor.toLowerCase().includes(buscaNormalizada);
+      return matchStatus && matchBusca;
+    });
+
+    return [...filtradas].sort((a, b) => {
+      const valorA = String(obterValorOrdenacao(a, ordenacao.campo));
+      const valorB = String(obterValorOrdenacao(b, ordenacao.campo));
+      const comparacao = valorA.localeCompare(valorB, 'pt-BR', {
+        numeric: true,
+        sensitivity: 'base'
+      });
+
+      return ordenacao.direcao === 'asc' ? comparacao : -comparacao;
+    });
+  }, [ordens, filtroStatus, busca, ordenacao]);
 
   const formatarData = (data: string) => {
     if (!data) return '-';
@@ -303,6 +356,18 @@ export default function OrdensServico() {
     'aguardando_material',
     'aguardando_execucao'
   ])];
+
+  const renderizarIconeOrdenacao = (campo: CampoOrdenacao) => {
+    if (ordenacao.campo !== campo) {
+      return <ArrowUpDown className="w-3.5 h-3.5 text-slate-500" />;
+    }
+
+    if (ordenacao.direcao === 'asc') {
+      return <ChevronUp className="w-3.5 h-3.5 text-cyan-400" />;
+    }
+
+    return <ChevronDown className="w-3.5 h-3.5 text-cyan-400" />;
+  };
 
   return (
     <Layout>
@@ -521,12 +586,66 @@ export default function OrdensServico() {
               <Table>
                 <TableHeader>
                   <TableRow className="border-slate-700 hover:bg-transparent">
-                    <TableHead className="text-slate-400">Número</TableHead>
-                    <TableHead className="text-slate-400">Cliente</TableHead>
-                    <TableHead className="text-slate-400">Motor</TableHead>
-                    <TableHead className="text-slate-400">Atividade</TableHead>
-                    <TableHead className="text-slate-400">Prioridade</TableHead>
-                    <TableHead className="text-slate-400">Status</TableHead>
+                    <TableHead className="text-slate-400">
+                      <button
+                        type="button"
+                        onClick={() => alternarOrdenacao('numero')}
+                        className="inline-flex items-center gap-1.5 hover:text-white transition-colors"
+                      >
+                        Número
+                        {renderizarIconeOrdenacao('numero')}
+                      </button>
+                    </TableHead>
+                    <TableHead className="text-slate-400">
+                      <button
+                        type="button"
+                        onClick={() => alternarOrdenacao('cliente')}
+                        className="inline-flex items-center gap-1.5 hover:text-white transition-colors"
+                      >
+                        Cliente
+                        {renderizarIconeOrdenacao('cliente')}
+                      </button>
+                    </TableHead>
+                    <TableHead className="text-slate-400">
+                      <button
+                        type="button"
+                        onClick={() => alternarOrdenacao('tipoMotor')}
+                        className="inline-flex items-center gap-1.5 hover:text-white transition-colors"
+                      >
+                        Motor
+                        {renderizarIconeOrdenacao('tipoMotor')}
+                      </button>
+                    </TableHead>
+                    <TableHead className="text-slate-400">
+                      <button
+                        type="button"
+                        onClick={() => alternarOrdenacao('atividadePrincipal')}
+                        className="inline-flex items-center gap-1.5 hover:text-white transition-colors"
+                      >
+                        Atividade
+                        {renderizarIconeOrdenacao('atividadePrincipal')}
+                      </button>
+                    </TableHead>
+                    <TableHead className="text-slate-400">
+                      <button
+                        type="button"
+                        onClick={() => alternarOrdenacao('prioridade')}
+                        className="inline-flex items-center gap-1.5 hover:text-white transition-colors"
+                      >
+                        Prioridade
+                        {renderizarIconeOrdenacao('prioridade')}
+                      </button>
+                    </TableHead>
+                    <TableHead className="text-slate-400">
+                      <button
+                        type="button"
+                        onClick={() => alternarOrdenacao('status')}
+                        className="inline-flex items-center gap-1.5 hover:text-white transition-colors"
+                      >
+                        Status
+                        {renderizarIconeOrdenacao('status')}
+                      </button>
+                    </TableHead>
                     <TableHead className="text-slate-400 text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
