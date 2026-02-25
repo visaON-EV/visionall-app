@@ -30,10 +30,10 @@ export default function Login() {
       });
       navigate('/dashboard');
     } else {
-      const descricao =
-        resultado.reason === 'perfil'
-          ? 'Usuário sem perfil cadastrado. Fale com o administrador.'
-          : 'Email ou senha incorretos';
+      let descricao = 'Email ou senha incorretos';
+      if ('reason' in resultado && resultado.reason === 'perfil') {
+        descricao = 'Usuário sem perfil cadastrado. Fale com o administrador.';
+      }
       toast({
         title: 'Erro no login',
         description: descricao,
