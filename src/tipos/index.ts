@@ -222,7 +222,7 @@ export const RESPONSAVEIS_SETOR = [
   'Jaconias',
   'Rodrigues',
   'José Barros',
-  'Antônio Barro',
+  'Antônio Barros',
   'Rodrigo',
   'Rosieth',
   'Leandro',
