@@ -56,6 +56,7 @@ export default function Dashboard() {
   const [modalEmAndamento, setModalEmAndamento] = useState(false);
   const [modalConcluidas, setModalConcluidas] = useState(false);
   const [modalAguardando, setModalAguardando] = useState(false);
+  const [modalAguardandoExecucao, setModalAguardandoExecucao] = useState(false);
   const [modalTempoTotal, setModalTempoTotal] = useState(false);
 
   // Hook de notificações de prazo
@@ -82,14 +83,20 @@ export default function Dashboard() {
   // Estatísticas gerais
   const totalOS = ordens.length;
   const osConcluidas = contagemStatus.concluido || 0;
-  const osAguardando = contagemStatus.aguardando_material || 0;
-  const osEmAndamento = totalOS - osConcluidas - osAguardando;
+  const osAguardandoMaterial = contagemStatus.aguardando_material || 0;
+  const osAguardandoExecucao = contagemStatus.aguardando_execucao || 0;
+  const osEmAndamento = totalOS - osConcluidas - osAguardandoMaterial - osAguardandoExecucao;
   
   // Filtrar OSs por categoria
   const todasOS = ordens;
-  const osEmAndamentoList = ordens.filter(os => os.status !== 'concluido' && os.status !== 'aguardando_material');
+  const osEmAndamentoList = ordens.filter(os => (
+    os.status !== 'concluido' &&
+    os.status !== 'aguardando_material' &&
+    os.status !== 'aguardando_execucao'
+  ));
   const osConcluidasList = ordens.filter(os => os.status === 'concluido');
   const osAguardandoList = ordens.filter(os => os.status === 'aguardando_material');
+  const osAguardandoExecucaoList = ordens.filter(os => os.status === 'aguardando_execucao');
 
   // Status ativos para mostrar no grid
   const statusAtivos = Object.entries(contagemStatus).filter(([_, count]) => count > 0);
@@ -174,11 +181,28 @@ export default function Dashboard() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-red-100 text-sm font-medium">Aguardando</p>
-                  <p className="text-4xl font-bold text-white mt-2">{osAguardando}</p>
+                  <p className="text-red-100 text-sm font-medium">Aguardando Material</p>
+                  <p className="text-4xl font-bold text-white mt-2">{osAguardandoMaterial}</p>
                 </div>
                 <div className="w-12 h-12 bg-red-500/50 rounded-lg flex items-center justify-center">
                   <AlertTriangle className="w-6 h-6 text-white" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card 
+            className="bg-gradient-to-br from-sky-500 to-cyan-600 border-0 cursor-pointer hover:from-sky-600 hover:to-cyan-700 transition-all"
+            onClick={() => setModalAguardandoExecucao(true)}
+          >
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sky-100 text-sm font-medium">Aguardando Execução</p>
+                  <p className="text-4xl font-bold text-white mt-2">{osAguardandoExecucao}</p>
+                </div>
+                <div className="w-12 h-12 bg-sky-500/50 rounded-lg flex items-center justify-center">
+                  <CalendarClock className="w-6 h-6 text-white" />
                 </div>
               </div>
             </CardContent>
@@ -690,6 +714,51 @@ export default function Dashboard() {
             <div className="text-center py-8 text-slate-500">
               <AlertTriangle className="w-12 h-12 mx-auto mb-3 opacity-50" />
               <p>Nenhuma O.S. aguardando material</p>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Aguardando Execução */}
+      <Dialog open={modalAguardandoExecucao} onOpenChange={setModalAguardandoExecucao}>
+        <DialogContent className="bg-slate-800 border-slate-700 max-w-3xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-white flex items-center gap-2">
+              <CalendarClock className="w-5 h-5 text-sky-400" />
+              Ordens de Serviço Aguardando Execução ({osAguardandoExecucaoList.length})
+            </DialogTitle>
+          </DialogHeader>
+          
+          {osAguardandoExecucaoList.length > 0 ? (
+            <div className="space-y-4">
+              {osAguardandoExecucaoList.map(os => (
+                <div key={os.id} className="bg-slate-700/50 rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                      <span className="font-mono text-blue-400 font-semibold">{os.numero}</span>
+                      <Badge className={`${STATUS_COLORS[os.status]} text-white`}>
+                        {STATUS_LABELS[os.status]}
+                      </Badge>
+                    </div>
+                    <span className="text-sm text-slate-400">{os.cliente}</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <p className="text-slate-400">Tipo de Motor</p>
+                      <p className="text-white">{os.tipoMotor}</p>
+                    </div>
+                    <div>
+                      <p className="text-slate-400">Atividade</p>
+                      <p className="text-white">{ATIVIDADE_LABELS[os.atividadePrincipal]}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-slate-500">
+              <CalendarClock className="w-12 h-12 mx-auto mb-3 opacity-50" />
+              <p>Nenhuma O.S. aguardando execução</p>
             </div>
           )}
         </DialogContent>

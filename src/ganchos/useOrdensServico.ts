@@ -58,6 +58,7 @@ function normalizarStatus(valor: unknown): OSStatus {
   if (v === 'acabamento') return 'acabamento';
   if (v === 'concluido' || v === 'concluído') return 'concluido';
   if (v === 'aguardando_material' || v === 'aguardando material externo') return 'aguardando_material';
+  if (v === 'aguardando_execucao' || v === 'aguardando execução' || v === 'aguardando execucao') return 'aguardando_execucao';
 
   // fallback seguro
   return 'corte';
