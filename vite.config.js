@@ -16,6 +16,10 @@ export default defineConfig(({ mode }) => ({
     VitePWA({
       registerType: "autoUpdate",
       includeAssets: ["favicon.png"],
+      devOptions: {
+        enabled: true,
+        type: "module"
+      },
       manifest: {
         name: "Vision All - Gestão de Produção",
         short_name: "Vision All",
@@ -26,6 +30,7 @@ export default defineConfig(({ mode }) => ({
         orientation: "portrait",
         scope: "/",
         start_url: "/",
+        id: "/",
         icons: [
           {
             src: "/favicon.png",
