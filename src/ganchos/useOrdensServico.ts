@@ -9,6 +9,7 @@ import {
   where,
   getDocs,
   writeBatch,
+  runTransaction,
   Timestamp,
   doc,
   setDoc,
@@ -26,6 +27,12 @@ function normalizarTexto(valor: unknown): string {
   return String(valor ?? '')
     .trim()
     .toLowerCase();
+}
+
+function gerarChaveNumeroOS(valor: unknown): string {
+  return normalizarTexto(valor)
+    .replace(/\s+/g, ' ')
+    .replaceAll('/', '-');
 }
 
 function normalizarAtividadePrincipal(valor: unknown): AtividadePrincipal {
@@ -224,10 +231,31 @@ export function useOrdensServico() {
 
   // Criar nova OS (persiste no Firestore)
   const criarOS = useCallback(async (dados: Omit<OrdemServico, 'id' | 'status' | 'createdAt' | 'updatedAt'>) => {
+    const numeroOS = String(dados.numero ?? '').trim();
+    const chaveNumeroOS = gerarChaveNumeroOS(numeroOS);
+    if (!chaveNumeroOS) {
+      throw new Error('NUMERO_OS_INVALIDO');
+    }
+
+    // Validação local para feedback rápido na UI.
+    const jaExisteLocal = ordens.some((os) => gerarChaveNumeroOS(os.numero) === chaveNumeroOS);
+    if (jaExisteLocal) {
+      throw new Error('NUMERO_OS_DUPLICADO');
+    }
+
+    // Validação no Firestore para cobrir dados legados sem índice auxiliar.
+    const duplicadasLegacy = await getDocs(
+      query(collection(db, 'ordens_servico'), where('numero', '==', numeroOS))
+    );
+    if (!duplicadasLegacy.empty) {
+      throw new Error('NUMERO_OS_DUPLICADO');
+    }
+
     const statusInicial = getStatusInicial(dados.atividadePrincipal);
     
     const novaOS: OrdemServico = {
       ...dados,
+      numero: numeroOS,
       id: crypto.randomUUID(),
       status: statusInicial,
       createdAt: new Date().toISOString(),
@@ -240,27 +268,46 @@ export function useOrdensServico() {
 
     // Salva usando o id como id do documento, para ficar consistente no app
     const ref = doc(db, 'ordens_servico', novaOS.id);
-    await setDoc(ref, {
-      numero: novaOS.numero,
-      cliente: novaOS.cliente,
-      tipoMotor: novaOS.tipoMotor,
-      semPedido: novaOS.semPedido,
-      atividadePrincipal: novaOS.atividadePrincipal,
-      atividadeSecundaria: novaOS.atividadeSecundaria,
-      prioridade: novaOS.prioridade,
-      dataEntrada: novaOS.dataEntrada ? Timestamp.fromDate(new Date(novaOS.dataEntrada)) : serverTimestamp(),
-      dataAutorizacao: dataAutorizacaoDate ? Timestamp.fromDate(dataAutorizacaoDate) : null,
-      previsaoEntrega: previsaoEntregaDate ? Timestamp.fromDate(previsaoEntregaDate) : null,
-      status: novaOS.status,
-      observacoes: novaOS.observacoes,
-      retrabalho: novaOS.retrabalho,
-      colaboradorAtual: novaOS.colaboradorAtual ?? '',
-      materialAguardando: novaOS.materialAguardando ?? '',
-      dataEntregaMaterial: dataEntregaMaterialDate ? Timestamp.fromDate(dataEntregaMaterialDate) : null,
-      motivoAtraso: novaOS.motivoAtraso ?? '',
-      setorAtraso: novaOS.setorAtraso ?? '',
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
+    const numeroRef = doc(db, 'ordens_servico_numeros', chaveNumeroOS);
+
+    // Trava transacional para impedir criação concorrente da mesma O.S.
+    await runTransaction(db, async (transaction) => {
+      const numeroSnap = await transaction.get(numeroRef);
+      if (numeroSnap.exists()) {
+        throw new Error('NUMERO_OS_DUPLICADO');
+      }
+
+      transaction.set(numeroRef, {
+        osId: novaOS.id,
+        numero: numeroOS,
+        numeroNormalizado: chaveNumeroOS,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      });
+
+      transaction.set(ref, {
+        numero: novaOS.numero,
+        numeroNormalizado: chaveNumeroOS,
+        cliente: novaOS.cliente,
+        tipoMotor: novaOS.tipoMotor,
+        semPedido: novaOS.semPedido,
+        atividadePrincipal: novaOS.atividadePrincipal,
+        atividadeSecundaria: novaOS.atividadeSecundaria,
+        prioridade: novaOS.prioridade,
+        dataEntrada: novaOS.dataEntrada ? Timestamp.fromDate(new Date(novaOS.dataEntrada)) : serverTimestamp(),
+        dataAutorizacao: dataAutorizacaoDate ? Timestamp.fromDate(dataAutorizacaoDate) : null,
+        previsaoEntrega: previsaoEntregaDate ? Timestamp.fromDate(previsaoEntregaDate) : null,
+        status: novaOS.status,
+        observacoes: novaOS.observacoes,
+        retrabalho: novaOS.retrabalho,
+        colaboradorAtual: novaOS.colaboradorAtual ?? '',
+        materialAguardando: novaOS.materialAguardando ?? '',
+        dataEntregaMaterial: dataEntregaMaterialDate ? Timestamp.fromDate(dataEntregaMaterialDate) : null,
+        motivoAtraso: novaOS.motivoAtraso ?? '',
+        setorAtraso: novaOS.setorAtraso ?? '',
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      });
     });
     
     // Registrar no histórico (Firestore): 1 doc por OS+status
@@ -278,7 +325,7 @@ export function useOrdensServico() {
     }, { merge: true });
     
     return novaOS;
-  }, []);
+  }, [ordens]);
 
   // Atualizar status da OS
   // REGRA: ÚNICO lugar autorizado a salvar tempo. Salva tempo do status anterior ao mudar de status.
@@ -402,15 +449,57 @@ export function useOrdensServico() {
     const osIndex = ordens.findIndex(o => o.id === id);
     if (osIndex === -1) return null;
     
+    const osAtual = ordens[osIndex];
+    const numeroAtual = String(osAtual.numero ?? '').trim();
+    const novoNumero = dados.numero !== undefined ? String(dados.numero).trim() : numeroAtual;
+    const numeroFoiAlterado = dados.numero !== undefined && novoNumero !== numeroAtual;
+
+    if (numeroFoiAlterado) {
+      const novaChaveNumero = gerarChaveNumeroOS(novoNumero);
+      const chaveAtualNumero = gerarChaveNumeroOS(numeroAtual);
+      if (!novaChaveNumero) {
+        throw new Error('NUMERO_OS_INVALIDO');
+      }
+
+      await runTransaction(db, async (transaction) => {
+        const osRef = doc(db, 'ordens_servico', id);
+        const novoNumeroRef = doc(db, 'ordens_servico_numeros', novaChaveNumero);
+        const numeroSnap = await transaction.get(novoNumeroRef);
+
+        if (numeroSnap.exists()) {
+          throw new Error('NUMERO_OS_DUPLICADO');
+        }
+
+        transaction.set(novoNumeroRef, {
+          osId: id,
+          numero: novoNumero,
+          numeroNormalizado: novaChaveNumero,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        });
+
+        if (chaveAtualNumero) {
+          transaction.delete(doc(db, 'ordens_servico_numeros', chaveAtualNumero));
+        }
+
+        transaction.update(osRef, {
+          numero: novoNumero,
+          numeroNormalizado: novaChaveNumero,
+          updatedAt: serverTimestamp()
+        });
+      });
+    }
+
     const osAtualizada = {
-      ...ordens[osIndex],
+      ...osAtual,
       ...dados,
+      ...(dados.numero !== undefined ? { numero: novoNumero } : {}),
       updatedAt: new Date().toISOString()
     };
     
     const ref = doc(db, 'ordens_servico', id);
     await updateDoc(ref, {
-      ...(dados.numero !== undefined ? { numero: String(dados.numero) } : {}),
+      ...(dados.numero !== undefined && !numeroFoiAlterado ? { numero: novoNumero } : {}),
       ...(dados.cliente !== undefined ? { cliente: String(dados.cliente) } : {}),
       ...(dados.tipoMotor !== undefined ? { tipoMotor: String(dados.tipoMotor) } : {}),
       ...(dados.semPedido !== undefined ? { semPedido: Boolean(dados.semPedido) } : {}),
@@ -456,6 +545,9 @@ export function useOrdensServico() {
 
   // Excluir OS
   const excluirOS = useCallback(async (id: string) => {
+    const osAtual = ordens.find((os) => os.id === id);
+    const chaveNumeroOS = osAtual ? gerarChaveNumeroOS(osAtual.numero) : '';
+
     // Remove todos os registros de histórico vinculados à OS antes de excluir o documento principal.
     const historicoQuery = query(
       collection(db, 'historico_status'),
@@ -487,11 +579,15 @@ export function useOrdensServico() {
       await Promise.all(commits);
     }
 
+    if (chaveNumeroOS) {
+      await deleteDoc(doc(db, 'ordens_servico_numeros', chaveNumeroOS));
+    }
+
     await deleteDoc(doc(db, 'ordens_servico', id));
     
     const novoHistorico = historico.filter(h => h.osId !== id);
     salvarHistorico(novoHistorico);
-  }, [historico, salvarHistorico]);
+  }, [ordens, historico, salvarHistorico]);
 
   // Buscar OS por ID
   const buscarOS = useCallback((id: string) => {

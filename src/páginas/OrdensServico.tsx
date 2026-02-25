@@ -117,9 +117,19 @@ export default function OrdensServico() {
       setFormData(formInicial);
       setModalAberto(false);
     } catch (error) {
+      const codigoErro = error instanceof Error ? error.message : '';
+      if (codigoErro === 'NUMERO_OS_DUPLICADO') {
+        toast({
+          title: 'Numero de O.S. duplicado',
+          description: `Ja existe uma O.S. com o numero ${formData.numero.trim()}.`,
+          variant: 'destructive'
+        });
+        return;
+      }
+
       toast({
         title: 'Erro ao criar O.S.',
-        description: 'Não foi possível salvar no Firestore. Verifique permissões/rede.',
+        description: 'N??o foi poss??vel salvar no Firestore. Verifique permiss??es/rede.',
         variant: 'destructive'
       });
       console.error(error);
@@ -164,9 +174,19 @@ export default function OrdensServico() {
       setModalEdicao(false);
       setOsSelecionada(null);
     } catch (error) {
+      const codigoErro = error instanceof Error ? error.message : '';
+      if (codigoErro === 'NUMERO_OS_DUPLICADO') {
+        toast({
+          title: 'Numero de O.S. duplicado',
+          description: `Ja existe uma O.S. com o numero ${String(formEdicao.numero || '').trim()}.`,
+          variant: 'destructive'
+        });
+        return;
+      }
+
       toast({
-        title: 'Erro ao salvar edição',
-        description: 'Não foi possível salvar no Firestore. Verifique permissões/rede.',
+        title: 'Erro ao salvar edi????o',
+        description: 'N??o foi poss??vel salvar no Firestore. Verifique permiss??es/rede.',
         variant: 'destructive'
       });
       console.error(error);
