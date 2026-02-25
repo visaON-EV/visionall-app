@@ -13,7 +13,8 @@ import {
   PRIORIDADE_COLORS,
   AtividadePrincipal,
   Prioridade,
-  STATUS_POR_ATIVIDADE
+  STATUS_POR_ATIVIDADE,
+  RESPONSAVEIS_SETOR
 } from '@/tipos';
 import Layout from '@/componentes/Layout';
 import { Button } from '@/componentes/interfaces do usuario/botão';
@@ -56,16 +57,20 @@ import { useToast } from '@/ganchos/use-toast';
 import OSDetalhes from '@/componentes/OSDetalhes';
 
 export default function OrdensServico() {
-  const { isColaborador, usuario, colaboradores } = useAuth();
+  const { isColaborador, usuario } = useAuth();
   const { ordens, criarOS, editarOS, atualizarStatus, getFluxoStatus, getProximoStatus } = useOrdensServico();
   const { toast } = useToast();
-  
+
   const [modalAberto, setModalAberto] = useState(false);
   const [modalEdicao, setModalEdicao] = useState(false);
+  const [modalResponsavel, setModalResponsavel] = useState(false);
   const [detalhesAberto, setDetalhesAberto] = useState(false);
   const [osSelecionada, setOsSelecionada] = useState<OrdemServico | null>(null);
+  const [osParaAtualizar, setOsParaAtualizar] = useState<OrdemServico | null>(null);
+  const [statusNovo, setStatusNovo] = useState<OSStatus | null>(null);
   const [filtroStatus, setFiltroStatus] = useState<string>('todos');
   const [busca, setBusca] = useState('');
+  const [responsavelSelecionado, setResponsavelSelecionado] = useState('');
   
   const formInicial = {
     numero: '',
@@ -160,49 +165,52 @@ export default function OrdensServico() {
     }
   };
 
+  const abrirModalResponsavel = (os: OrdemServico, novoStatus: OSStatus) => {
+    setOsParaAtualizar(os);
+    setStatusNovo(novoStatus);
+    setResponsavelSelecionado('');
+    setModalResponsavel(true);
+  };
+
   const handleAvancarStatus = async (os: OrdemServico) => {
     const proximoStatus = getProximoStatus(os);
     if (proximoStatus) {
-      const colaborador = colaboradores.find(c => c.id === usuario?.colaboradorId);
-
-      try {
-        await atualizarStatus(
-          os.id, 
-          proximoStatus, 
-          usuario?.colaboradorId || '', 
-          colaborador?.nome || usuario?.nome || 'Sistema'
-        );
-
-        toast({
-          title: 'Status atualizado!',
-          description: `Avançou para: ${STATUS_LABELS[proximoStatus]}`,
-        });
-      } catch (error) {
-        toast({
-          title: 'Erro ao atualizar status',
-          description: 'Não foi possível salvar no Firestore. Verifique permissões/rede.',
-          variant: 'destructive'
-        });
-        console.error(error);
-      }
+      abrirModalResponsavel(os, proximoStatus);
     }
   };
 
   const handleMudarStatus = async (os: OrdemServico, novoStatus: OSStatus) => {
-    const colaborador = colaboradores.find(c => c.id === usuario?.colaboradorId);
+    abrirModalResponsavel(os, novoStatus);
+  };
+
+  const handleConfirmarResponsavel = async () => {
+    if (!osParaAtualizar || !statusNovo) return;
+    if (!responsavelSelecionado) {
+      toast({
+        title: 'Erro',
+        description: 'Selecione um responsável para o novo status.',
+        variant: 'destructive'
+      });
+      return;
+    }
 
     try {
       await atualizarStatus(
-        os.id, 
-        novoStatus, 
-        usuario?.colaboradorId || '', 
-        colaborador?.nome || usuario?.nome || 'Sistema'
+        osParaAtualizar.id,
+        statusNovo,
+        usuario?.colaboradorId || '',
+        responsavelSelecionado
       );
 
       toast({
         title: 'Status atualizado!',
-        description: `Alterado para: ${STATUS_LABELS[novoStatus]}`,
+        description: `Alterado para: ${STATUS_LABELS[statusNovo]}`,
       });
+
+      setModalResponsavel(false);
+      setOsParaAtualizar(null);
+      setStatusNovo(null);
+      setResponsavelSelecionado('');
     } catch (error) {
       toast({
         title: 'Erro ao atualizar status',
@@ -565,6 +573,59 @@ export default function OrdensServico() {
         />
       )}
 
+      {/* Modal de Seleção de Responsável */}
+      <Dialog open={modalResponsavel} onOpenChange={(aberto) => {
+        setModalResponsavel(aberto);
+        if (!aberto) {
+          setOsParaAtualizar(null);
+          setStatusNovo(null);
+          setResponsavelSelecionado('');
+        }
+      }}>
+        <DialogContent className="bg-slate-800 border-slate-700 max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-white">Selecionar responsável</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="text-sm text-slate-400">
+              {osParaAtualizar?.numero ? `O.S. ${osParaAtualizar.numero}` : ''}{' '}
+              {statusNovo ? `• ${STATUS_LABELS[statusNovo]}` : ''}
+            </div>
+            <div className="space-y-2">
+              <Label className="text-slate-300">Responsável do setor</Label>
+              <Select 
+                value={responsavelSelecionado} 
+                onValueChange={setResponsavelSelecionado}
+              >
+                <SelectTrigger className="bg-slate-700 border-slate-600 text-white">
+                  <SelectValue placeholder="Selecionar" />
+                </SelectTrigger>
+                <SelectContent className="bg-slate-800 border-slate-700">
+                  {RESPONSAVEIS_SETOR.map((nome) => (
+                    <SelectItem key={nome} value={nome} className="text-white">
+                      {nome}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex justify-end gap-3 pt-2">
+              <Button 
+                type="button" 
+                variant="outline"
+                onClick={() => setModalResponsavel(false)}
+                className="border-slate-600 text-slate-300"
+              >
+                Cancelar
+              </Button>
+              <Button type="button" className="bg-blue-600 hover:bg-blue-700" onClick={handleConfirmarResponsavel}>
+                Confirmar
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Modal de Edição */}
       <Dialog open={modalEdicao} onOpenChange={setModalEdicao}>
         <DialogContent className="bg-slate-800 border-slate-700 max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -689,6 +750,7 @@ export default function OrdensServico() {
                 className="bg-slate-700 border-slate-600 text-white"
               />
             </div>
+            
 
             <div className="flex justify-end gap-3 pt-4">
               <Button 

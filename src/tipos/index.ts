@@ -214,3 +214,21 @@ export const FERIADOS_2026 = [
 ];
 
 export const TODOS_FERIADOS = [...FERIADOS_2024, ...FERIADOS_2025, ...FERIADOS_2026];
+
+export const RESPONSAVEIS_SETOR = [
+  'Italo',
+  'Sebastião',
+  'Darthan',
+  'Josevaldo',
+  'Jaconias',
+  'Rodrigues',
+  'José Barros',
+  'Antônio Barro',
+  'Rodrigo',
+  'Rosieth',
+  'Leandro',
+  'Rafael',
+  'Edmilson',
+  'Stênio',
+  'Igor'
+] as const;

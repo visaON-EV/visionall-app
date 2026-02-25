@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { OrdemServico, STATUS_LABELS, STATUS_COLORS, ATIVIDADE_LABELS, PRIORIDADE_LABELS, PRIORIDADE_COLORS, STATUS_POR_ATIVIDADE } from '@/tipos';
+import { OrdemServico, STATUS_LABELS, STATUS_COLORS, ATIVIDADE_LABELS, PRIORIDADE_LABELS, PRIORIDADE_COLORS, STATUS_POR_ATIVIDADE, RESPONSAVEIS_SETOR } from '@/tipos';
 import { useOrdensServico } from '@/ganchos/useOrdensServico';
 import { useAuth } from '@/contextos/AuthContext';
 import { formatarTempoUtil, calcularTempoUtil } from '@/utilitários/calcularTempoUtil';
@@ -11,8 +11,14 @@ import {
 } from '@/componentes/interfaces do usuario/diálogo';
 import { Badge } from '@/componentes/interfaces do usuario/badge';
 import { Separator } from '@/componentes/interfaces do usuario/separador';
-import { Input } from '@/componentes/interfaces do usuario/input';
 import { Button } from '@/componentes/interfaces do usuario/botão';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/componentes/interfaces do usuario/select';
 import { Clock, User, Calendar, Wrench, RefreshCw, CheckCircle2, Timer } from 'lucide-react';
 import { useToast } from '@/ganchos/use-toast';
 
@@ -97,7 +103,7 @@ export default function OSDetalhes({ os, aberto, onFechar }: OSDetalhesProps) {
     if (!colaboradorInput.trim()) {
       toast({
         title: 'Erro',
-        description: 'Digite o nome do colaborador',
+        description: 'Selecione o nome do colaborador',
         variant: 'destructive'
       });
       return;
@@ -391,27 +397,38 @@ export default function OSDetalhes({ os, aberto, onFechar }: OSDetalhesProps) {
                       
                       {/* Input para adicionar colaborador - NÃO mostrar na etapa concluído */}
                       {isColaborador && isAtual && !isConcluido && statusParaAtualizar === status && (
-                        <div className="mt-2 flex gap-2">
-                          <Input
-                            placeholder="Nome do colaborador"
+                        <div className="mt-2 flex flex-col sm:flex-row gap-2">
+                          <Select
                             value={colaboradorInput}
-                            onChange={(e) => setColaboradorInput(e.target.value)}
-                            className="bg-slate-700 border-slate-600 text-white text-sm"
-                          />
-                          <Button 
-                            size="sm" 
-                            onClick={() => handleRegistrarColaborador(index)}
-                            className="bg-blue-600 hover:bg-blue-700"
+                            onValueChange={setColaboradorInput}
                           >
-                            Registrar
-                          </Button>
-                          <Button 
-                            size="sm" 
-                            variant="ghost"
-                            onClick={() => setStatusParaAtualizar(null)}
-                          >
-                            Cancelar
-                          </Button>
+                            <SelectTrigger className="bg-slate-700 border-slate-600 text-white text-sm">
+                              <SelectValue placeholder="Selecionar colaborador" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-slate-800 border-slate-700">
+                              {RESPONSAVEIS_SETOR.map((nome) => (
+                                <SelectItem key={nome} value={nome} className="text-white">
+                                  {nome}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <div className="flex gap-2">
+                            <Button 
+                              size="sm" 
+                              onClick={() => handleRegistrarColaborador(index)}
+                              className="bg-blue-600 hover:bg-blue-700"
+                            >
+                              Registrar
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              variant="ghost"
+                              onClick={() => setStatusParaAtualizar(null)}
+                            >
+                              Cancelar
+                            </Button>
+                          </div>
                         </div>
                       )}
                       
