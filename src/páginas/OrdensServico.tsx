@@ -1,4 +1,4 @@
-﻿import { useState } from 'react';
+import { useState } from 'react';
 import { useAuth } from '@/contextos/AuthContext';
 import { useOrdensServico } from '@/ganchos/useOrdensServico';
 import { 
@@ -96,7 +96,7 @@ export default function OrdensServico() {
     if (!formData.numero.trim()) {
       toast({
         title: 'Erro',
-        description: 'O nÃºmero da O.S. Ã© obrigatÃ³rio',
+        description: 'O número da O.S. é obrigatório',
         variant: 'destructive'
       });
       return;
@@ -111,7 +111,7 @@ export default function OrdensServico() {
 
       toast({
         title: 'O.S. criada com sucesso!',
-        description: `Ordem de serviÃ§o ${formData.numero} cadastrada`,
+        description: `Ordem de serviço ${formData.numero} cadastrada`,
       });
 
       setFormData(formInicial);
@@ -119,7 +119,7 @@ export default function OrdensServico() {
     } catch (error) {
       toast({
         title: 'Erro ao criar O.S.',
-        description: 'NÃ£o foi possÃ­vel salvar no Firestore. Verifique permissÃµes/rede.',
+        description: 'Não foi possível salvar no Firestore. Verifique permissões/rede.',
         variant: 'destructive'
       });
       console.error(error);
@@ -158,15 +158,15 @@ export default function OrdensServico() {
 
       toast({
         title: 'O.S. atualizada!',
-        description: 'As alteraÃ§Ãµes foram salvas',
+        description: 'As alterações foram salvas',
       });
 
       setModalEdicao(false);
       setOsSelecionada(null);
     } catch (error) {
       toast({
-        title: 'Erro ao salvar ediÃ§Ã£o',
-        description: 'NÃ£o foi possÃ­vel salvar no Firestore. Verifique permissÃµes/rede.',
+        title: 'Erro ao salvar edição',
+        description: 'Não foi possível salvar no Firestore. Verifique permissões/rede.',
         variant: 'destructive'
       });
       console.error(error);
@@ -204,7 +204,7 @@ export default function OrdensServico() {
         if (!materialAguardandoInput.trim() || !dataEntregaMaterialInput) {
           toast({
             title: 'Erro',
-            description: 'Informe a peÃ§a/material aguardado e a data de entrega.',
+            description: 'Informe a peça/material aguardado e a data de entrega.',
             variant: 'destructive'
           });
           return;
@@ -224,7 +224,7 @@ export default function OrdensServico() {
         if (responsaveisSelecionados.length === 0) {
           toast({
             title: 'Erro',
-            description: 'Selecione ao menos um responsÃ¡vel para o novo status.',
+            description: 'Selecione ao menos um responsável para o novo status.',
             variant: 'destructive'
           });
           return;
@@ -252,7 +252,7 @@ export default function OrdensServico() {
     } catch (error) {
       toast({
         title: 'Erro ao atualizar status',
-        description: 'NÃ£o foi possÃ­vel salvar no Firestore. Verifique permissÃµes/rede.',
+        description: 'Não foi possível salvar no Firestore. Verifique permissões/rede.',
         variant: 'destructive'
       });
       console.error(error);
@@ -277,7 +277,7 @@ export default function OrdensServico() {
     });
   };
 
-  // Obter todos os status possÃ­veis para o filtro
+  // Obter todos os status possíveis para o filtro
   const todosStatus = [...new Set([
     ...Object.values(STATUS_POR_ATIVIDADE).flat(),
     'aguardando_material',
@@ -290,7 +290,7 @@ export default function OrdensServico() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-white">Ordens de ServiÃ§o</h1>
+            <h1 className="text-3xl font-bold text-white">Ordens de Serviço</h1>
             <p className="text-slate-400">Gerencie todas as O.S. do sistema</p>
           </div>
           
@@ -304,12 +304,12 @@ export default function OrdensServico() {
               </DialogTrigger>
               <DialogContent className="bg-slate-800 border-slate-700 max-w-2xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
-                  <DialogTitle className="text-white">Nova Ordem de ServiÃ§o</DialogTitle>
+                  <DialogTitle className="text-white">Nova Ordem de Serviço</DialogTitle>
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label className="text-slate-300">NÃºmero da O.S. *</Label>
+                      <Label className="text-slate-300">Número da O.S. *</Label>
                       <Input
                         value={formData.numero}
                         onChange={(e) => setFormData({...formData, numero: e.target.value})}
@@ -381,18 +381,18 @@ export default function OrdensServico() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-slate-300">Atividade SecundÃ¡ria</Label>
+                    <Label className="text-slate-300">Atividade Secundária</Label>
                     <Textarea
                       value={formData.atividadeSecundaria}
                       onChange={(e) => setFormData({...formData, atividadeSecundaria: e.target.value})}
                       className="bg-slate-700 border-slate-600 text-white"
-                      placeholder="Descreva atividades secundÃ¡rias se houver"
+                      placeholder="Descreva atividades secundárias se houver"
                     />
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label className="text-slate-300">Data de AutorizaÃ§Ã£o</Label>
+                      <Label className="text-slate-300">Data de Autorização</Label>
                       <Input
                         type="date"
                         value={formData.dataAutorizacao}
@@ -401,7 +401,7 @@ export default function OrdensServico() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label className="text-slate-300">PrevisÃ£o de Entrega</Label>
+                      <Label className="text-slate-300">Previsão de Entrega</Label>
                       <Input
                         type="date"
                         value={formData.previsaoEntrega}
@@ -428,17 +428,17 @@ export default function OrdensServico() {
                       value={formData.retrabalho}
                       onChange={(e) => setFormData({...formData, retrabalho: e.target.value})}
                       className="bg-slate-700 border-slate-600 text-white"
-                      placeholder="InformaÃ§Ãµes sobre retrabalho (se aplicÃ¡vel)"
+                      placeholder="Informações sobre retrabalho (se aplicável)"
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-slate-300">ObservaÃ§Ãµes</Label>
+                    <Label className="text-slate-300">Observações</Label>
                     <Textarea
                       value={formData.observacoes}
                       onChange={(e) => setFormData({...formData, observacoes: e.target.value})}
                       className="bg-slate-700 border-slate-600 text-white"
-                      placeholder="ObservaÃ§Ãµes adicionais"
+                      placeholder="Observações adicionais"
                     />
                   </div>
 
@@ -468,7 +468,7 @@ export default function OrdensServico() {
               <div className="flex-1 relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
                 <Input
-                  placeholder="Buscar por nÃºmero, cliente ou motor..."
+                  placeholder="Buscar por número, cliente ou motor..."
                   value={busca}
                   onChange={(e) => setBusca(e.target.value)}
                   className="pl-10 bg-slate-700 border-slate-600 text-white"
@@ -501,13 +501,13 @@ export default function OrdensServico() {
               <Table>
                 <TableHeader>
                   <TableRow className="border-slate-700 hover:bg-transparent">
-                    <TableHead className="text-slate-400">NÃºmero</TableHead>
+                    <TableHead className="text-slate-400">Número</TableHead>
                     <TableHead className="text-slate-400">Cliente</TableHead>
                     <TableHead className="text-slate-400">Motor</TableHead>
                     <TableHead className="text-slate-400">Atividade</TableHead>
                     <TableHead className="text-slate-400">Prioridade</TableHead>
                     <TableHead className="text-slate-400">Status</TableHead>
-                    <TableHead className="text-slate-400 text-right">AÃ§Ãµes</TableHead>
+                    <TableHead className="text-slate-400 text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -599,7 +599,7 @@ export default function OrdensServico() {
                     <TableRow>
                       <TableCell colSpan={7} className="text-center py-8 text-slate-500">
                         {ordens.length === 0 
-                          ? 'Nenhuma ordem de serviÃ§o cadastrada'
+                          ? 'Nenhuma ordem de serviço cadastrada'
                           : 'Nenhum resultado encontrado para os filtros aplicados'
                         }
                       </TableCell>
@@ -624,7 +624,7 @@ export default function OrdensServico() {
         />
       )}
 
-      {/* Modal de SeleÃ§Ã£o de ResponsÃ¡vel */}
+      {/* Modal de Seleção de Responsável */}
       <Dialog open={modalResponsavel} onOpenChange={(aberto) => {
         setModalResponsavel(aberto);
         if (!aberto) {
@@ -638,7 +638,7 @@ export default function OrdensServico() {
         <DialogContent className="bg-slate-800 border-slate-700 max-w-md">
           <DialogHeader>
             <DialogTitle className="text-white">
-              {statusNovo === 'aguardando_material' ? 'Informar material aguardado' : 'Selecionar responsÃ¡vel'}
+              {statusNovo === 'aguardando_material' ? 'Informar material aguardado' : 'Selecionar responsável'}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
@@ -649,7 +649,7 @@ export default function OrdensServico() {
             {statusNovo === 'aguardando_material' ? (
               <>
                 <div className="space-y-2">
-                  <Label className="text-slate-300">PeÃ§a/Material aguardado</Label>
+                  <Label className="text-slate-300">Peça/Material aguardado</Label>
                   <Input
                     value={materialAguardandoInput}
                     onChange={(e) => setMaterialAguardandoInput(e.target.value)}
@@ -669,7 +669,7 @@ export default function OrdensServico() {
               </>
             ) : (
               <div className="space-y-2">
-                <Label className="text-slate-300">ResponsÃ¡veis do setor</Label>
+                <Label className="text-slate-300">Responsáveis do setor</Label>
                 <div className="max-h-56 overflow-y-auto space-y-2 rounded-md border border-slate-600 bg-slate-700/40 p-3">
                   {RESPONSAVEIS_SETOR.map((nome) => {
                     const selecionado = responsaveisSelecionados.includes(nome);
@@ -686,8 +686,8 @@ export default function OrdensServico() {
                 </div>
                 <p className="text-xs text-slate-400">
                   {responsaveisSelecionados.length > 0
-                    ? `${responsaveisSelecionados.length} responsÃ¡vel(eis) selecionado(s)`
-                    : 'Nenhum responsÃ¡vel selecionado'}
+                    ? `${responsaveisSelecionados.length} responsável(eis) selecionado(s)`
+                    : 'Nenhum responsável selecionado'}
                 </p>
               </div>
             )}
@@ -708,7 +708,7 @@ export default function OrdensServico() {
         </DialogContent>
       </Dialog>
 
-      {/* Modal de EdiÃ§Ã£o */}
+      {/* Modal de Edição */}
       <Dialog open={modalEdicao} onOpenChange={setModalEdicao}>
         <DialogContent className="bg-slate-800 border-slate-700 max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -717,7 +717,7 @@ export default function OrdensServico() {
           <form onSubmit={handleSalvarEdicao} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label className="text-slate-300">NÃºmero da O.S. *</Label>
+                <Label className="text-slate-300">Número da O.S. *</Label>
                 <Input
                   value={formEdicao.numero || ''}
                   onChange={(e) => setFormEdicao({...formEdicao, numero: e.target.value})}
@@ -786,7 +786,7 @@ export default function OrdensServico() {
             </div>
 
             <div className="space-y-2">
-              <Label className="text-slate-300">Atividade SecundÃ¡ria</Label>
+              <Label className="text-slate-300">Atividade Secundária</Label>
               <Textarea
                 value={formEdicao.atividadeSecundaria || ''}
                 onChange={(e) => setFormEdicao({...formEdicao, atividadeSecundaria: e.target.value})}
@@ -796,7 +796,7 @@ export default function OrdensServico() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label className="text-slate-300">Data de AutorizaÃ§Ã£o</Label>
+                <Label className="text-slate-300">Data de Autorização</Label>
                 <Input
                   type="date"
                   value={formEdicao.dataAutorizacao || ''}
@@ -805,7 +805,7 @@ export default function OrdensServico() {
                 />
               </div>
               <div className="space-y-2">
-                <Label className="text-slate-300">PrevisÃ£o de Entrega</Label>
+                <Label className="text-slate-300">Previsão de Entrega</Label>
                 <Input
                   type="date"
                   value={formEdicao.previsaoEntrega || ''}
@@ -836,7 +836,7 @@ export default function OrdensServico() {
             </div>
 
             <div className="space-y-2">
-              <Label className="text-slate-300">ObservaÃ§Ãµes</Label>
+              <Label className="text-slate-300">Observações</Label>
               <Textarea
                 value={formEdicao.observacoes || ''}
                 onChange={(e) => setFormEdicao({...formEdicao, observacoes: e.target.value})}
@@ -858,7 +858,7 @@ export default function OrdensServico() {
                 Cancelar
               </Button>
               <Button type="submit" className="bg-blue-600 hover:bg-blue-700">
-                Salvar AlteraÃ§Ãµes
+                Salvar Alterações
               </Button>
             </div>
           </form>
