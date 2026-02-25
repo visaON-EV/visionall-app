@@ -22,6 +22,7 @@ import { Input } from '@/componentes/interfaces do usuario/input';
 import { Label } from '@/componentes/interfaces do usuario/label';
 import { Textarea } from '@/componentes/interfaces do usuario/textarea';
 import { Badge } from '@/componentes/interfaces do usuario/badge';
+import { Checkbox } from '@/componentes/interfaces do usuario/checkbox';
 import { Card, CardContent } from '@/componentes/interfaces do usuario/cartão';
 import {
   Dialog,
@@ -77,6 +78,7 @@ export default function OrdensServico() {
     numero: '',
     cliente: '',
     tipoMotor: '',
+    semPedido: false,
     atividadePrincipal: 'rebobinar' as AtividadePrincipal,
     atividadeSecundaria: '',
     prioridade: 'normal' as Prioridade,
@@ -130,6 +132,7 @@ export default function OrdensServico() {
       numero: os.numero,
       cliente: os.cliente,
       tipoMotor: os.tipoMotor,
+      semPedido: os.semPedido,
       atividadePrincipal: os.atividadePrincipal,
       atividadeSecundaria: os.atividadeSecundaria,
       prioridade: os.prioridade,
@@ -406,6 +409,17 @@ export default function OrdensServico() {
                     </div>
                   </div>
 
+                  <div className="flex items-center space-x-2 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3">
+                    <Checkbox
+                      id="sem-pedido"
+                      checked={formData.semPedido}
+                      onCheckedChange={(checked) => setFormData({ ...formData, semPedido: Boolean(checked) })}
+                    />
+                    <Label htmlFor="sem-pedido" className="text-amber-200 cursor-pointer">
+                      Sem pedido de autorizacao
+                    </Label>
+                  </div>
+
                   <div className="space-y-2">
                     <Label className="text-slate-300">Retrabalho</Label>
                     <Textarea
@@ -515,7 +529,12 @@ export default function OrdensServico() {
                           }}
                         >
                           <TableCell className="font-mono text-blue-400 font-semibold">
-                            {os.numero}
+                            <div className="flex items-center gap-2">
+                              <span>{os.numero}</span>
+                              {os.semPedido && (
+                                <Badge className="bg-amber-600 text-white">Sem pedido</Badge>
+                              )}
+                            </div>
                           </TableCell>
                           <TableCell className="text-white">{os.cliente}</TableCell>
                           <TableCell className="text-slate-300">{os.tipoMotor}</TableCell>
@@ -799,6 +818,17 @@ export default function OrdensServico() {
                   className="bg-slate-700 border-slate-600 text-white"
                 />
               </div>
+            </div>
+
+            <div className="flex items-center space-x-2 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3">
+              <Checkbox
+                id="sem-pedido-edicao"
+                checked={Boolean(formEdicao.semPedido)}
+                onCheckedChange={(checked) => setFormEdicao({ ...formEdicao, semPedido: Boolean(checked) })}
+              />
+              <Label htmlFor="sem-pedido-edicao" className="text-amber-200 cursor-pointer">
+                Sem pedido de autorizacao
+              </Label>
             </div>
 
             <div className="space-y-2">

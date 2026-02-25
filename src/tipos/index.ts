@@ -108,6 +108,7 @@ export interface OrdemServico {
   numero: string;
   cliente: string;
   tipoMotor: string;
+  semPedido: boolean;
   atividadePrincipal: AtividadePrincipal;
   atividadeSecundaria: string;
   prioridade: Prioridade;

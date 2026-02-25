@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useAuth } from '@/contextos/AuthContext';
 import { useOrdensServico } from '@/ganchos/useOrdensServico';
 import { useNotificacoesPrazo } from '@/ganchos/useNotificacoesPrazo';
-import { STATUS_LABELS, STATUS_COLORS, ATIVIDADE_LABELS, ATIVIDADES_PRINCIPAIS, OSStatus } from '@/tipos';
+import { OrdemServico, STATUS_LABELS, STATUS_COLORS, ATIVIDADE_LABELS, ATIVIDADES_PRINCIPAIS, OSStatus } from '@/tipos';
 import { formatarTempoUtil } from '@/utilitários/calcularTempoUtil';
 import { Card, CardContent, CardHeader, CardTitle } from '@/componentes/interfaces do usuario/cartão';
 import { Badge } from '@/componentes/interfaces do usuario/badge';
@@ -85,6 +85,7 @@ export default function Dashboard() {
   const osConcluidas = contagemStatus.concluido || 0;
   const osAguardandoMaterial = contagemStatus.aguardando_material || 0;
   const osAguardandoExecucao = contagemStatus.aguardando_execucao || 0;
+  const osSemPedido = ordens.filter(os => os.semPedido).length;
   const osEmAndamento = totalOS - osConcluidas - osAguardandoMaterial - osAguardandoExecucao;
   
   // Filtrar OSs por categoria
@@ -105,6 +106,10 @@ export default function Dashboard() {
     if (!data) return '-';
     return new Date(data).toLocaleDateString('pt-BR', { timeZone: 'UTC' });
   };
+
+  const renderSemPedidoBadge = (os: OrdemServico) => (
+    os.semPedido ? <Badge className="bg-amber-600 text-white">Sem pedido</Badge> : null
+  );
 
   return (
     <Layout>
@@ -135,6 +140,20 @@ export default function Dashboard() {
                 </div>
                 <div className="w-12 h-12 bg-blue-500/50 rounded-lg flex items-center justify-center">
                   <ClipboardList className="w-6 h-6 text-white" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-gradient-to-br from-amber-500 to-yellow-600 border-0">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-amber-100 text-sm font-medium">Sem Pedido</p>
+                  <p className="text-4xl font-bold text-white mt-2">{osSemPedido}</p>
+                </div>
+                <div className="w-12 h-12 bg-amber-400/50 rounded-lg flex items-center justify-center">
+                  <AlertTriangle className="w-6 h-6 text-white" />
                 </div>
               </div>
             </CardContent>
@@ -387,7 +406,10 @@ export default function Dashboard() {
                         <ClipboardList className="w-5 h-5 text-blue-400" />
                       </div>
                       <div>
-                        <p className="font-semibold text-white">{os.numero}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="font-semibold text-white">{os.numero}</p>
+                          {renderSemPedidoBadge(os)}
+                        </div>
                         <p className="text-sm text-slate-400">{os.cliente}</p>
                       </div>
                     </div>
@@ -430,7 +452,10 @@ export default function Dashboard() {
                 <div key={os.id} className="bg-slate-700/50 rounded-lg p-4">
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-3">
-                      <span className="font-mono text-blue-400 font-semibold">{os.numero}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-blue-400 font-semibold">{os.numero}</span>
+                        {renderSemPedidoBadge(os)}
+                      </div>
                       <Badge className={`${STATUS_COLORS[os.status]} text-white`}>
                         {STATUS_LABELS[os.status]}
                       </Badge>
@@ -478,7 +503,10 @@ export default function Dashboard() {
                 >
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-3">
-                      <span className="font-mono text-blue-400 font-semibold">{os.numero}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-blue-400 font-semibold">{os.numero}</span>
+                        {renderSemPedidoBadge(os)}
+                      </div>
                       <Badge className={`${STATUS_COLORS[os.status]} text-white`}>
                         {STATUS_LABELS[os.status]}
                       </Badge>
@@ -551,7 +579,10 @@ export default function Dashboard() {
                 <div key={os.id} className="bg-slate-700/50 rounded-lg p-4">
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-3">
-                      <span className="font-mono text-blue-400 font-semibold">{os.numero}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-blue-400 font-semibold">{os.numero}</span>
+                        {renderSemPedidoBadge(os)}
+                      </div>
                       <Badge className={`${STATUS_COLORS[os.status]} text-white`}>
                         {STATUS_LABELS[os.status]}
                       </Badge>
@@ -596,7 +627,10 @@ export default function Dashboard() {
                 <div key={os.id} className="bg-slate-700/50 rounded-lg p-4">
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-3">
-                      <span className="font-mono text-blue-400 font-semibold">{os.numero}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-blue-400 font-semibold">{os.numero}</span>
+                        {renderSemPedidoBadge(os)}
+                      </div>
                       <Badge className={`${STATUS_COLORS[os.status]} text-white`}>
                         {STATUS_LABELS[os.status]}
                       </Badge>
@@ -641,7 +675,10 @@ export default function Dashboard() {
                 <div key={os.id} className="bg-slate-700/50 rounded-lg p-4">
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-3">
-                      <span className="font-mono text-blue-400 font-semibold">{os.numero}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-blue-400 font-semibold">{os.numero}</span>
+                        {renderSemPedidoBadge(os)}
+                      </div>
                       <Badge className={`${STATUS_COLORS[os.status]} text-white`}>
                         {STATUS_LABELS[os.status]}
                       </Badge>
@@ -686,7 +723,10 @@ export default function Dashboard() {
                 <div key={os.id} className="bg-slate-700/50 rounded-lg p-4">
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-3">
-                      <span className="font-mono text-blue-400 font-semibold">{os.numero}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-blue-400 font-semibold">{os.numero}</span>
+                        {renderSemPedidoBadge(os)}
+                      </div>
                       <Badge className={`${STATUS_COLORS[os.status]} text-white`}>
                         {STATUS_LABELS[os.status]}
                       </Badge>
@@ -735,7 +775,10 @@ export default function Dashboard() {
                 <div key={os.id} className="bg-slate-700/50 rounded-lg p-4">
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-3">
-                      <span className="font-mono text-blue-400 font-semibold">{os.numero}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-blue-400 font-semibold">{os.numero}</span>
+                        {renderSemPedidoBadge(os)}
+                      </div>
                       <Badge className={`${STATUS_COLORS[os.status]} text-white`}>
                         {STATUS_LABELS[os.status]}
                       </Badge>
@@ -782,7 +825,10 @@ export default function Dashboard() {
                   <div key={os.id} className="bg-slate-700/50 rounded-lg p-4">
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-3">
-                        <span className="font-mono text-blue-400 font-semibold">{os.numero}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-blue-400 font-semibold">{os.numero}</span>
+                          {renderSemPedidoBadge(os)}
+                        </div>
                         <Badge className={`${STATUS_COLORS[os.status]} text-white`}>
                           {STATUS_LABELS[os.status]}
                         </Badge>
